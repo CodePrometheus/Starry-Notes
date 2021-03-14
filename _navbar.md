@@ -1,3 +1,3 @@
-- [笔记仓库](https://github.com/CodePrometheus/CodePrometheus.github.io)
+- [NotesRepo](https://github.com/CodePrometheus/CodePrometheus.github.io)
 - [Github](https://github.com/CodePrometheus)
 - [BiliBili](https://space.bilibili.com/342251858)
