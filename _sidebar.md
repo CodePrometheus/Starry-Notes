@@ -19,10 +19,10 @@
   - [Spring整合](Spring/Spring整合.md)
 
 - **SpringMVC**
-  -[SpringMVCBase](SpringMVC/SpringMVC.md)
+  - [SpringMVCBase](SpringMVC/SpringMVC.md)
 
 - **SpringCloud**
-  -[SpringCloudBase](SpringCloud/SpringCloud.md)
+  - [SpringCloudBase](SpringCloud/SpringCloud.md)
 
 - **SpringCloudAlibaba**
-  -[SpringCloudAlibabaBase](SpringCloudAlibaba/SpringCloudAlibaba.md)
+  - [SpringCloudAlibabaBase](SpringCloudAlibaba/SpringCloudAlibaba.md)
