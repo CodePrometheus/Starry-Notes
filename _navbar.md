@@ -1,4 +1,0 @@
-- [NotesRepo](https://github.com/CodePrometheus/CodePrometheus.github.io)
-- [Github](https://github.com/CodePrometheus)
-- [BiliBili](https://space.bilibili.com/342251858)
-- [Home](https://codeprometheus.github.io/Starry-Notes/#/)

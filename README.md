@@ -8,29 +8,31 @@
 ## Reading
 [Github Pages](https://wardseptember.github.io/notes/#/)
 
-## Java
-- [基础语法](Java/基础语法.md)
-- [面向对象](Java/面向对象.md)
-- [接口](Java/接口.md)
-- [异常](Java/异常.md)
-- [集合](Java/集合.md)
-- [反射](Java/反射.md)
-- [泛型](Java/泛型.md)
-- [枚举注解](Java/枚举注解.md)
-- [I/O](Java/IO.md)
+## JavaBase
+- [基础语法](JavaBase/基础语法.md)
+- [面向对象](JavaBase/面向对象.md)
+- [接口](JavaBase/接口.md)
+- [异常](JavaBase/异常.md)
+- [集合](JavaBase/集合.md)
+- [反射](JavaBase/反射.md)
+- [泛型](JavaBase/泛型.md)
+- [枚举注解](JavaBase/枚举注解.md)
+- [I/O](JavaBase/IO.md)
 
-## Spring
-- [SpringBase](Spring/SpringBase.md)
-- [SpringAOP](Spring/SpringAOP.md)
-- [Spring注解](Spring/Spring注解.md)
-- [Spring整合](Spring/Spring整合.md)
+## SpringAllBase
 
-## SpringMVC
-- [SpringMVCBase](SpringMVC/SpringMVC.md)
+### Spring 
+- [SpringBase](SpringAllBase/Spring/SpringBase.md)
+- [SpringAOP](SpringAllBase/Spring/SpringAOP.md)
+- [Spring注解](SpringAllBase/Spring/Spring注解.md)
+- [Spring整合](SpringAllBase/Spring/Spring整合.md)
 
-## SpringCloud
-- [SpringCloudBase](SpringCloud/SpringCloud.md)
+### SpringMVC
+- [SpringMVCBase](SpringAllBase/SpringMVC/SpringMVC.md)
 
-## SpringCloudAlibaba
-- [SpringCloudAlibabaBase](SpringCloudAlibaba/SpringCloudAlibaba.md)
+### SpringCloud
+- [SpringCloudBase](SpringAllBase/SpringCloud/SpringCloud.md)
+
+### SpringCloudAlibaba
+- [SpringCloudAlibabaBase](SpringAllBase/SpringCloudAlibaba/SpringCloudAlibaba.md)
 

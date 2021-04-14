@@ -583,7 +583,7 @@ public class ContextLoaderListener extends ContextLoader implements ServletConte
 }
 ~~~
 
-![image-20200824181137568](../images/spring/springweb.png)
+![image-20200824181137568](../../images/spring/springweb.png)
 
 
 
