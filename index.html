@@ -9,7 +9,7 @@
           content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <link rel="icon" href="./images/favicon.ico">
     <link rel="stylesheet" href="//unpkg.com/docsify/lib/themes/vue.css">
-    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify-dark-mode@0.6.1/dist/style.css"/>
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify-darklight-theme@latest/dist/style.min.css">
 </head>
 <body>
 <div id="app"></div>
@@ -20,9 +20,19 @@
     loadSidebar: true, // 设置侧边栏
     subMaxLevel: 3, //侧边栏显示当前页面的目录(标题)
     loadNavbar: true, // 设置导航栏
-    dockMode: {
+    darklightTheme: {
+      defaultTheme: 'light',
+      siteFont: 'Source Sans Pro,Helvetica Neue,Arial,sans-serif',
+      codeFontFamily: 'Roboto Mono, Monaco, courier, monospace',
+      bodyFontSize: '15px',
+      dark: {
+        background: 'rgb(28,32,34)',
+        highlightColor: '#e96900',
+        codeBackgroundColor: 'rgb(34,39,46)',
+        codeTextColor: '#b4b4b4',
+      },
       light: {
-        toggleBtnBg: "#42b983"
+        highlightColor: '#e96900',
       }
     },
     // 完整配置参数
@@ -72,9 +82,11 @@
 <script src="//unpkg.com/prismjs/components/prism-java.js"></script>
 <script src="//unpkg.com/prismjs/components/prism-sql.js"></script>
 <script src="//unpkg.com/prismjs/components/prism-java.js"></script>
-<script src="//unpkg.com/prismjs/components/prism-sql.js"></script>
+<script src="//cdn.jsdelivr.net/npm/prismjs/components/prism-json.min.js"></script>
 
-<script src="//cdn.jsdelivr.net/npm/docsify-dark-mode@0.6.1/dist/index.js"></script>
+
+<script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/zoom-image.js"></script>
+<script src="//cdn.jsdelivr.net/npm/docsify-darklight-theme@latest/dist/index.min.js"></script>
 
 </body>
 </html>
