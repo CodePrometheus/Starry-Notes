@@ -43,6 +43,9 @@
 ## 计算机网络
 
 ## MySQL
+- [SQL执行过程](Mysql/SQL执行过程.md)
+- [MySQL权限详解](Mysql/MySQL权限详解.md)
+- [InnoDB存储引擎架构简介](Mysql/InnoDB存储引擎架构简介.md)
 
 ## 线程并发
 
