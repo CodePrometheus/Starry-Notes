@@ -35,9 +35,11 @@
 ## 计算机网络
 
 ## MySQL
-- [SQL执行过程](Mysql/SQL执行过程.md)
-- [MySQL权限详解](Mysql/MySQL权限详解.md)
-- [InnoDB存储引擎架构简介](Mysql/InnoDB存储引擎架构简介.md)
+- [SQL查询执行过程](MySQL/SQL查询执行过程.md)
+- [MySQL权限详解](MySQL/MySQL权限详解.md)
+- [InnoDB存储引擎架构简介](MySQL/InnoDB存储引擎架构简介.md)
+- [MySQL日志](MySQL/MySQL日志.md)
+- [MySQL事务ACID](MySQL/MySQL事务ACID.md)
 
 ## 线程并发
 
@@ -63,6 +65,6 @@
 
 - 京东
 
-### 猿辅导
+- 猿辅导
 
-### 其他
+- 其他
