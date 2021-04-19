@@ -9,6 +9,9 @@
 [Because it's there](https://wardseptember.github.io/notes/#/)
 
 ## JavaBase
+
+### 基础
+
 - [基础语法](JavaBase/基础语法.md)
 - [面向对象](JavaBase/面向对象.md)
 - [接口](JavaBase/接口.md)
@@ -19,7 +22,12 @@
 - [枚举注解](JavaBase/枚举注解.md)
 - [I/O](JavaBase/IO.md)
 
+### 拓展
+
+- [位运算](JavaBase/)
+
 ## SpringAllBase
+
 - [SpringBase](SpringAllBase/Spring/SpringBase.md)
 - [SpringAOP](SpringAllBase/Spring/SpringAOP.md)
 - [Spring注解](SpringAllBase/Spring/Spring注解.md)
@@ -29,10 +37,12 @@
 - [SpringCloudAlibabaBase](SpringAllBase/SpringCloudAlibaba/SpringCloudAlibaba.md)
 
 ## Java重难点
+- [一致性哈希](KeyPoints/ConsistentHashing.md)
 
 ## 操作系统
 
 ## 计算机网络
+
 
 ## MySQL
 - [SQL查询执行过程](MySQL/SQL查询执行过程.md)
@@ -40,6 +50,7 @@
 - [InnoDB存储引擎架构简介](MySQL/InnoDB存储引擎架构简介.md)
 - [MySQL日志](MySQL/MySQL日志.md)
 - [MySQL事务ACID](MySQL/MySQL事务ACID.md)
+- [MySQL索引分类](MySQL/MySQL索引分类.md)
 
 ## 线程并发
 
