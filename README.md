@@ -37,11 +37,11 @@
 - [一致性哈希](KeyPoints/ConsistentHashing.md)
 
 ## 操作系统
-
-## 计算机网络
 - [操作系统基础](OperatingSystem/操作系统基础.md)
 - [进程与线程](OperatingSystem/进程与线程.md)
 
+## 计算机网络
+- [计网基础](ComputerNetworking/计网基础.md)
 
 ## MySQL
 - [SQL查询执行过程](MySQL/SQL查询执行过程.md)
