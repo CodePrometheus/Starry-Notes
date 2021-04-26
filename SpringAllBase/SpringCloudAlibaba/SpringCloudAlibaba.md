@@ -1,6 +1,6 @@
 # Spring Cloud Alibaba
 
-
+[TOC]
 
 Spring Cloud Alibaba provides a one-stop solution for distributed application development. It contains all the components required to develop distributed applications, making it easy for you to develop your applications using Spring Cloud.
 
@@ -13,7 +13,7 @@ With Spring Cloud Alibaba, you only need to add some annotations and a small amo
 - 有了阿里云，你只需要添加一些注解和少量的配置，就可以将Spring云应用连接到阿里的分布式解决方案上，用阿里中间件搭建一个分布式应用系统。
 ```
 
-## 2.环境搭建
+## 1.环境搭建
 
 ```markdown
 # 0.构建项目并引入依赖
@@ -45,7 +45,7 @@ With Spring Cloud Alibaba, you only need to add some annotations and a small amo
 
 ----
 
-## 3.Nacos
+## 2.Nacos
 
 ### 什么是Nacos  Name Service & Configurations Services
 
@@ -324,7 +324,7 @@ public class HelloController {
 
 ---
 
-## 4.sentinel 流量卫兵
+## 3.sentinel 
 
 ### 什么是sentinel
 
@@ -612,47 +612,101 @@ public class SentinelController {
     }
 ```
 
-## 5.整合环境公共依赖
 
-**spring boot 2.2+**
 
-**springcloud Hoxton**
 
-**springcloud alibaba 2.2.1+**
 
-```markdown
-# 0.构建项目并引入依赖
-```
+## Nacos2.0
 
-```xml
+在3月20号，Nacos 2.0.0 正式发布了
 
-<properties>
-  <java.version>1.8</java.version>
-  <spring-cloud.version>Hoxton.SR6</spring-cloud.version>
-  <spring.cloud.alibaba.version>2.2.1.RELEASE</spring.cloud.alibaba.version>
-</properties>
+通俗点讲，Nacos 就是一把微服务双剑：注册中心 + 配置中心
 
-<dependencyManagement>
-  <dependencies>
-    <!--引入springcloud alibaba-->
-    <dependency>
-      <groupId>com.alibaba.cloud</groupId>
-      <artifactId>spring-cloud-alibaba-dependencies</artifactId>
-      <version>${spring.cloud.alibaba.version}</version>
-      <type>pom</type>
-      <scope>import</scope>
-    </dependency>
-    <!--引入springcloud-->
-    <dependency>
-      <groupId>org.springframework.cloud</groupId>
-      <artifactId>spring-cloud-dependencies</artifactId>
-      <version>${spring-cloud.version}</version>
-      <type>pom</type>
-      <scope>import</scope>
-    </dependency>
-  </dependencies>
-</dependencyManagement>
-```
+### 架构模型
 
-----
+#### 1.x架构
+
+![img](images/874710-20210404150414678-1954518871.png)
+
+Nacos 1.X 大致分为5层， 分别是接入、通信、功能、同步和持久化。
+
+#### 1.x服务模型
+
+![img](images/874710-20210404150635076-1812497948.png)
+
+
+
+#### 1.x架构存在的问题
+
+一句话总结，心跳多，无效查询多，心跳续约感知变化慢，连接消耗大，资源空耗严重。
+
+![img](images/874710-20210404150718408-1406986479.png)
+
+1、 心跳数量多，导致TPS居高不下
+
+通过心跳续约，当服务规模上升时，特别是类似Dubbo的接口级服务较多时，心跳及配置元数据的轮询数量众多，导致集群TPS很高，系统资源高度空耗。
+
+2、 通过心跳续约感知服务变化，时延长
+
+心跳续约需要达到超时时间才会移除并通知订阅者，默认为15s，时延较长，时效性差。若改短超时时间，当网络抖动时，会频繁触发变更推送，对客户端服务端都有更大损耗。
+
+3、 UDP推送不可靠，导致QPS居高不下
+
+由于UDP不可靠，因此客户端测需要每隔一段时间进行对账查询，保证客户端缓存的服务列表的状态正确，当订阅客户端规模上升时，集群QPS很高，但大多数服务列表其实不会频繁改变，造成无效查询，从而存在资源空耗。
+
+4、基于HTTP短连接模型，TIME_WAIT状态连接过多
+
+HTTP短连接模型，每次客户端请求都会创建和销毁TCP链接，TCP协议销毁的链接状态是WAIT_TIME，完全释放还需要一定时间，当TPS和QPS较高时，服务端和客户端可能有大量的WAIT_TIME状态链接，从而会导致connect time out错误或者Cannot assign requested address 的问题。
+
+5、配置模块的30秒长轮询 引起的频繁GC
+
+配置模块使用HTTP短连接阻塞模型来模拟长连接通信，但是由于并非真实的长连接模型，因此每30秒需要进行一次请求和数据的上下文切换，每一次切换都有引起造成一次内存浪费，从而导致服务端频繁GC。
+
+
+
+#### 2.0架构
+
+Nacos 2.0 架构最主要的变化就是增加了对长连接的支持，gRPC 和 Rsocket 实现了长连接 RPC 调用和推送能力。
+
+![img](images/874710-20210404150820011-1782872421.png)
+
+
+
+#### 2.0服务模型
+
+![img](images/874710-20210404150908483-1598971694.png)
+
+虽然Nacos2.0的在架构层次上并未做太大的变化，但是具体的模型细节却有不小的改动，依旧使用注册服务的流程
+
+#### Nacos 2.0架构的优缺点
+
+**优点**
+
+- 1、 客户端不再需要定时发送实例心跳，只需要有一个维持连接可用keepalive消息即可。重复TPS可以大幅降低。
+- 2、 TCP连接断开可以被快速感知到，提升反应速度。
+- 3、 长连接的流式推送，比UDP更加可靠；nio的机制具有更高的吞吐量，而且由于可靠推送，可以加长客户端用于对账服务列表的时间，甚至删除相关的请求。重复的无效QPS可以大幅降低。
+- 4、 长连接避免频繁连接开销，可以大幅缓解TIME_ WAIT问题。
+- 5、 真实的长连接，解决配置模块GC问题。
+- 6、 更细粒度的同步内容，减少服务节点间的通信压力。
+
+**缺点**
+没有银弹（ silver bullet  万金油）的方案，新架构也会引入一些新问题
+
+- 1、 内部结构复杂度上升，管理连接状态，连接的负载均衡需要管理。
+- 2、 数据由原来的无状态，变为与连接绑定的有状态数据，流程链路更长。
+- 3、 RPC协议的观测性不如HTTP。即使gRPC基于HTTP2.0Stream实现，仍然不如直接使用HTTP协议来的直观。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
