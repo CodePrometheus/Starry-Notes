@@ -224,6 +224,12 @@ ACL即 `Access Control List` (节点的权限控制)，通过`ACL`机制来解�
 
 ## Watch
 
+1. 客户端向服务端注册Wather监听
+2. 保存Wather对象到客户端本地的WatherManager中
+3. 服务端Wather事件触发后，客户端收到服务端通知，从WatherManager中取出对应Wather对象执行回调逻辑
+
+![img](images/1460000023530905)
+
 `zookeeper`可以为`dubbo`提供服务的注册与发现，作为注册中心，zookeeper`为什么能够实现服务的注册与发现吗？这就不得不说一下`zookeeper`的灵魂 `Watcher（监听者）。
 
 
@@ -257,7 +263,101 @@ ACL即 `Access Control List` (节点的权限控制)，通过`ACL`机制来解�
 
 ### Watch特性
 
-注意 -> `watch`对节点的监听事件是**一次性的**！客户端在指定的节点设置了监听`watch`，一旦该节点数据发生变更**通知一次客户端后**，客户端对该节点的监听事件就**失效**了。
+1. 注意 -> `watch`对节点的监听事件是**一次性的**！客户端在指定的节点设置了监听`watch`，一旦该节点数据发生变更**通知一次客户端后**，客户端对该节点的监听事件就**失效**了。
 
-如果还要继续监听这个节点，就需要我们在客户端的监听回调中，**再次**对节点的监听`watch`事件设置为`True`。否则客户端只能接收到一次该节点的变更通知。
+   如果还要继续监听这个节点，就需要我们在客户端的监听回调中，**再次**对节点的监听`watch`事件设置为`True`。否则客户端只能接收到一次该节点的变更通知。
+
+   若设计一直触发，订阅方必须显式取消，那么触发一次地场景若要实现，就要显式地调用取消，考虑实际场景，zk设计为一次性（举个例子，如果服务端变动频繁，而监听的客户端很多情况下，每次变动都要通知到所有的客户端，给网络和服务器造成很大压力。一般是客户端执行 getData(“/节点 A”,true)，如果节点 A 发生了变更或删除，客户端会得到它的 watch 事件，但是在之后节点 A 又发生了变更，而客户端又没 有设置 watch 事件，就不再给客户端发送。在实际应用中，很多情况下，我们的客户端不需要知道服务端的每一次变动，我只要最新的数据即可）
+
+2. 客户端串行：客户端地Watcher回调处理是串行同步的过程，不会因为一个Watcher的逻辑阻塞整个客户端
+
+3. 轻量：Wather通知的单位是WathedEvent**，只包含通知状态、事件类型和节点路径**，**不包含具体的事件内容**，具体的时间内容需要客户端主动去重新获取数据
+
+
+
+
+
+## Zookeeper角色
+
+![img](images/v2-f12c16d0bb79bea7ffb15076e2ca5afb_720w.jpg)
+
+Zookeeper中通常只有Leader节点可以写入，Follower和Observer都只是负责读，但是Follower会参与节点的选举和**过半写成功**，Observer则不会，他只是单纯的提供读取数据的功能。通常这样设置的话，是为了避免太多的从节点参与过半写的过程，导致影响性能，这样Zookeeper只要使用一个几台机器的小集群就可以实现高性能了，如果要横向扩展的话，只需要增加Observer节点即可。
+
+![img](images/aHR0cHM6Ly9tbWJpei5xcGljLmNuL21tYml6X2pwZy9pYkJNVnVEZmtaVW1xYjB0OXhPSk9YZWJudGFob0hNR01DbTZmVEZTWG9vYUxVUk1NSkp4UWZ2QTlwSnFpY3UxZ0pHVXhVYWxOVEtRSGliQXJyUGZPdzJIQS82NDA)
+
+### Leader
+
+- 一个 Zookeeper 集群同一时间只会有一个实际工作的 Leader，它会发起并维护与各 Follwer及Observer间的心跳。
+- 所有的写操作必须要通过 Leader 完成再由 Leader 将写操作广播给其它服务器。只要有超过半数节点（不包括 observeer 节点）写入成功，该写请求就会被提交（类 2PC 协议）。
+
+### Follower
+
+- 一个 Zookeeper 集群可能同时存在多个 Follower，它会响应 Leader 的心跳；
+- Follower 可直接处理并返回客户端的读请求，同时会将写请求转发给 Leader 处理；
+- 并且负责在 Leader 处理写请求时对请求进行投票。
+
+### Observer
+
+在不伤害写性能的情况下扩展zookeeper，尤其是对读请求进行扩展，接受更多的请求流量，不牺牲写操作的吞吐量
+
+> 尽管通过Client直接连接到Zookeeper集群的性能已经非常好了，但是这种架构如果要承受超大规模的Client，就必须增加Zookeeper集群的Server数量，随着Server的增加，Zookeeper**集群的写性能必定下降**，因为Zookeeper的Znode变更是要过半数投票通过，随着机器的增加，由于网络消耗等原因必然导致投票成本增加，从而导致写性能的下降。
+>
+> Observer节点，可以帮助解决上述问题，提供Zookeeper的可扩展性。Observer不参与投票，只是简单的**接收投票结果**，因此我们增加再多的Observer，**也不会影响集群的写性能**。除了这个差别，其他的和Follower基本上完全一样。例如：Client都可以连接到他们，并且都**可以发送读写请求给他们**，**收到写请求都会上报到Leader**。
+>
+> 因为它不参与投票，所以他们不属于Zookeeper集群的关键部位，即使他们Failed，或者从集群中断开，**也不会影响集群的可用性**。根据Observer的特点，我们可以使用Observer做**跨数据中心部署**。如果把Leader和Follower分散到多个数据中心的话，因为数据中心之间的网络的延迟，势必会导致集群性能的大幅度下降。使用Observer的话，将Observer跨机房部署，而Leader和Follower部署在单独的数据中心，**这样更新操作会在同一个数据中心来处理**，并将数据发送的其他数据中心（包含Observer的），然后Client就可以在其他数据中心查询数据了。但是使用了Observer并非就能完全消除数据中心之间的延迟，**因为Observer还得接收Leader的同步结果合Observer有更新请求也必须转发到Leader**，所以在网络延迟很大的情况下还是会有影响的，**它的优势就为了本地读请求的快速响应**
+
+![img](images/20151203204354129)
+
+- 角色与 Follower 类似，但是无投票权。Zookeeper 需保证高可用和强一致性，为了支持更多的客户端，需要增加更多 Server；Server 增多，因为zookeeper从节点写入必须得是过半写才算成功，投票阶段延迟增大，影响性能；引入 Observer，Observer 不参与投票； Observers 接受客户端的连接，并将写请求转发给 leader 节点； 加入更多 Observer 节点，提高伸缩性，同时不影响吞吐率。
+
+很多跨机房、跨地区的数据中心就是通过observer来实现的
+
+![img](images/a61149fa7197a1a38494267bbbe4631b.png)
+
+
+
+如果要使用Observer模式，可以在对应节点的配置文件添加如下配置：
+
+~~~shell
+peerType=observer // zoo.cfg
+~~~
+
+上面仅仅是告诉Zookeeper该节点是Observer，其次，必须在配置文件指定哪些节点被指定为Observer，例如:
+
+~~~shell
+server.1:localhost:2181:3181:observer
+~~~
+
+
+
+
+
+
+
+
+
+## Zookeeper如何处理请求
+
+ZooKeeper集群中的每个server都能为客户端提供读、写服务。
+
+对于客户端的读请求，server会直接从它本地的内存数据库中取出数据返回给客户端，这个过程不涉及其它任何操作，也不会联系leader。
+
+对于客户端的写请求，因为写操作会修改znode的数据、状态，所以必须要在ZooKeeper集群中进行协调。处理过程如下：
+
+1. 收到写请求的那个server，首先将写请求**发送给leader**。
+2. leader收到来自follower(或observer)的写请求后，首先计算这次写操作之后的状态，然后将这个写请求**转换成带有各种状态的事务**(如版本号、zxid等等)。
+3. leader将这个事务以提议的方式**广播**出去(即发送proposal)。
+4. 所有follower收到proposal后，对这个提议进行投票，投票完成后返回ack给leader。follower的投票只有两种方式：(1)确认这次提议表示同意；(2)丢弃这次提议表示不同意。
+5. leader收集投票结果，只要投票数量达到了**大多数的要求**(例如，5个节点的集群，3个或3个以上的节点才算大多数)，这次提议就通过。
+6. 提议通过后，leader向所有server发送一个**提交通知**。
+7. 所有节点将这次事务写入事务日志，并进行提交。
+8. 提交后，收到写请求的那个server向客户端返回成功信息。
+
+下面是ZooKeeper集群处理写请求过程的一个简图：
+
+![img](images/487db314051036dd771d41fa1468ef3f.png)
+
+> 和follower一样，当observer收到客户端的读请求时，会直接从内存数据库中取出数据返回给客户端。
+>
+> 对于写请求，当写请求发送到某server上后，无论这个节点是follower还是observer，都会将它发送给leader。然后leader组织投票过程，所有server都收到这个proposal(包括observer，因为proposal是广播出去的)，但是leader和follower以及observer通过配置文件，都知道自己是不是observer以及谁是observer。自己是observer的server不参与投票。当leader收集完投票后，将那些observer的server去掉，在剩下的server中计算大多数，如果投票结果达到了大多数，这次写事务就成功，于是leader通知所有的节点(包括observer)，让它们将事务写入事务日志，并提交。
 

@@ -34,6 +34,7 @@
 - [SpringCloudAlibabaBase](SpringAllBase/SpringCloudAlibaba/SpringCloudAlibaba.md)
 
 ## Java重难点
+
 - [一致性哈希](KeyPoints/ConsistentHashing.md)
 
 
@@ -42,6 +43,7 @@
 
 - [Zookeeper](MiddleWare/Zookeeper.md)
 - [Zookeeper应用场景及相应问题处理](MiddleWare/Zookeeper应用场景及相应问题处理.md)
+- [Zab与Zookeeper](MiddleWare/Zab与Zookeeper.md)
 - [RabbitMQ基础](MiddleWare/RabbitMQ基础.md)
 - [RabbitMQ深入](MiddleWare/RabbitMQ深入.md)
 

@@ -616,7 +616,7 @@ public class SentinelController {
 
 
 
-## Nacos2.0
+## 4.Nacos2.0
 
 在3月20号，Nacos 2.0.0 正式发布了
 
