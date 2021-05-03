@@ -36,6 +36,11 @@
 ## Java重难点
 
 - [一致性哈希](KeyPoints/ConsistentHashing.md)
+- [HashMap1.7](KeyPoints/HashMap1.7.md)
+- [HashMap1.8](KeyPoints/HashMap1.8.md)
+- [HashMap常见问题](KeyPoints/HashMap常见问题.md)
+- [ArrayList](KeyPoints/ArrayList.md)
+- [CopyOnWriteArrayList](KeyPoints/CopyOnWriteArrayList.md)
 
 
 
@@ -85,22 +90,3 @@
 
 ## Vue
 
-## 面经
-
-- 阿里
-
-- 字节
-
-- 美团
-
-- 腾讯
-
-- 百度
-
-- 网易
-
-- 京东
-
-- 猿辅导
-
-- 其他
