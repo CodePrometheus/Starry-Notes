@@ -36,11 +36,24 @@
 ## Java重难点
 
 - [一致性哈希](KeyPoints/ConsistentHashing.md)
+
 - [HashMap1.7](KeyPoints/HashMap1.7.md)
+
 - [HashMap1.8](KeyPoints/HashMap1.8.md)
+
 - [HashMap常见问题](KeyPoints/HashMap常见问题.md)
+
+- [ConcurrentHashMap1.6&1.7](KeyPoints/ConcurrentHashMap1.6&1.7.md)
+
+- [ConcurrentHashMap1.8](KeyPoints/ConcurrentHashMap1.8.md)
+
+- [ConcurrentHashMap常见问题](KeyPoints/ConcurrentHashMap常见问题.md)
+
 - [ArrayList](KeyPoints/ArrayList.md)
+
 - [CopyOnWriteArrayList](KeyPoints/CopyOnWriteArrayList.md)
+
+  
 
 
 
