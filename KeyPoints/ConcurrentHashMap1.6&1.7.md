@@ -111,7 +111,9 @@ final Segment<K,V>[] segments;   // ConcurrentHashMap的底层结构是一个Seg
 
 **Segment 类继承于 ReentrantLock 类，从而使得 Segment 对象能充当锁的角色。**每个 Segment 对象用来守护它的成员对象 table 中包含的若干个桶。table 是一个由 HashEntry 对象组成的链表数组，table 数组的每一个数组成员就是一个桶。
 
-在Segment类中，count 变量是一个计数器，它表示每个 Segment 对象管理的 table 数组包含的 HashEntry 对象的个数，也就是 Segment 中包含的 HashEntry 对象的总数。特别需要注意的是，之所以在每个 Segment 对象中包含一个计数器，而不是在 ConcurrentHashMap 中使用全局的计数器，是对 ConcurrentHashMap 并发性的考虑：**因为这样当需要更新计数器时，不用锁定整个ConcurrentHashMap。**事实上，每次对段进行结构上的改变，如在段中进行增加/删除节点(修改节点的值不算结构上的改变)，都要更新count的值，此外，在JDK的实现中**每次读取操作开始都要先读取count的值**。特别需要注意的是，**count是volatile的**，这使得对count的任何更新对其它线程都是**立即可见的**。modCount用于统计段结构改变的次数，主要是为了检测对多个段进行遍历过程中**某个段是否发生改变**，这一点具体在谈到跨段操作时会详述。threashold用来表示段需要进行重哈希的阈值。loadFactor表示段的负载因子，其值等同于ConcurrentHashMap的负载因子的值。table是一个典型的链表数组，而且也是volatile的，这使得对table的任何更新对其它线程也都是立即可见的。段(Segment)的定义如下：
+在Segment类中，count 变量是一个计数器，它表示每个 Segment 对象管理的 table 数组包含的 HashEntry **对象的个数**，也就是 Segment 中包含的 HashEntry 对象的总数。特别需要注意的是，之所以在每个 Segment 对象中包含一个计数器，而不是在 ConcurrentHashMap 中使用全局的计数器，是对 ConcurrentHashMap 并发性的考虑：**因为这样当需要更新计数器时，不用锁定整个ConcurrentHashMap。**事实上，每次对段进行结构上的改变，如在段中进行增加/删除节点(修改节点的值不算结构上的改变)，都要更新count的值，此外，在JDK的实现中**每次读取操作开始都要先读取count的值**。特别需要注意的是，**count是volatile的**，这使得对count的任何更新对其它线程都是**立即可见的**。modCount用于统计段结构改变的次数，主要是为了检测对多个段进行遍历过程中**某个段是否发生改变**
+
+threashold用来表示段需要进行重哈希的阈值。loadFactor表示段的负载因子，其值等同于ConcurrentHashMap的负载因子的值。table是一个典型的链表数组，而且也是volatile的，这使得对table的任何更新对其它线程也都是立即可见的。段(Segment)的定义如下：
 
 ~~~java
 /**
@@ -173,7 +175,7 @@ HashEntry用来封装具体的键值对，是个典型的四元组。与HashMap�
 
 **不同的是，在HashEntry类中，key，hash和next域都被声明为final的，value域被volatile所修饰，因此HashEntry对象几乎是不可变的，这是ConcurrentHashMap读操作并不需要加锁的一个重要原因。**
 
-next域被声明为final本身就意味着我们不能从hash链的中间或尾部添加或删除节点，因为这需要修改next引用值，因此所有的节点的修改只能从头部开始。
+next域被声明为final本身就意味着我们**不能从hash链的中间或尾部添加或删除节点**，因为这需要修改next引用值，因此所有的节点的修改**只能从头部开始**。
 
 对于put操作，可以一律添加到Hash链的头部。但是对于remove操作，可能需要从中间删除一个节点，这就需要将要删除节点的前面所有节点整个复制(重新new)一遍，最后一个节点指向要删除结点的下一个结点
 
@@ -374,6 +376,8 @@ public ConcurrentHashMap(Map<? extends K, ? extends V> m) {
 
 ### put
 
+![img](images/20170305144746061)
+
 用分段锁机制实现多个线程间的并发写操作
 
 ~~~java
@@ -456,9 +460,9 @@ V put(K key, int hash, V value, boolean onlyIfAbsent) {
 }
 ~~~
 
-从源码中首先可以知道，ConcurrentHashMap对Segment的put操作是加锁完成的。在第二节我们已经知道，Segment是ReentrantLock的子类，因此Segment本身就是一种可重入的Lock，所以我们可以直接调用其继承而来的lock()方法和unlock()方法对代码进行上锁/解锁。需要注意的是，这里的加锁操作是针对某个具体的Segment，锁定的也是该Segment而不是整个ConcurrentHashMap。因为插入键/值对操作只是在这个Segment包含的某个桶中完成，不需要锁定整个ConcurrentHashMap。因此，其他写线程对另外15个Segment的加锁并不会因为当前线程对这个Segment的加锁而阻塞。故而 **相比较于 Hashtable 和由同步包装器包装的HashMap每次只能有一个线程执行读或写操作，ConcurrentHashMap 在并发访问性能上有了质的提高。在理想状态下，ConcurrentHashMap 可以支持 16 个线程执行并发写操作（如果并发级别设置为 16），及任意数量线程的读操作。**
+从源码中首先可以知道，ConcurrentHashMap对Segment的put操作是加锁完成的，Segment是ReentrantLock的子类，因此Segment本身就是一种可重入的Lock，所以可以直接调用其继承而来的lock()方法和unlock()方法对代码进行上锁/解锁。需要注意的是，这里的加锁操作是针对某个具体的Segment，锁定的也是该Segment**而不是整个ConcurrentHashMap**。因为插入键/值对操作只是在这个Segment包含的某个桶中完成，不需要锁定整个ConcurrentHashMap。因此，其他写线程对另外15个Segment的加锁并不会因为当前线程对这个Segment的加锁而阻塞。故而 **相比较于 Hashtable 和由同步包装器包装的HashMap每次只能有一个线程执行读或写操作，ConcurrentHashMap 在并发访问性能上有了质的提高。在理想状态下，ConcurrentHashMap 可以支持 16 个线程执行并发写操作（如果并发级别设置为 16），及任意数量线程的读操作。**
 
-在将Key/Value对插入到Segment之前，首先会检查本次插入会不会导致Segment中元素的数量超过阈值threshold，如果会，那么就先对Segment进行扩容和重哈希操作，然后再进行插入。重哈希操作暂且不表，稍后详述。第8和第9行的操作就是定位到段中特定的桶并确定链表头部的位置。第12行的while循环用于检查该桶中是否存在相同key的结点，如果存在，就直接更新value值；如果没有找到，则进入21行生成一个新的HashEntry并且把它链到该桶中链表的表头，然后再更新count的值(由于count是volatile变量，所以count值的更新一定要放在最后一步)。
+在将Key/Value对插入到Segment之前，首先会检查本次插入会不会导致Segment中元素的数量超过阈值threshold，如果会，那么就先对Segment进行扩容和重哈希操作，**然后再进行插入**。重哈希操作暂且不表，稍后详述。第8和第9行的操作就是定位到段中特定的桶并确定链表头部的位置。第12行的while循环用于检查该桶中是否存在相同key的结点，如果存在，就直接更新value值；如果没有找到，则进入21行生成一个新的HashEntry并且把它链到该桶中链表的表头，然后再更新count的值(由于count是volatile变量，所以count值的更新一定要放在最后一步)。
 
 
 
@@ -467,25 +471,17 @@ V put(K key, int hash, V value, boolean onlyIfAbsent) {
 在ConcurrentHashMap中使用put操作插入Key/Value对之前，首先会检查本次插入会不会导致Segment中节点数量超过阈值threshold，如果会，那么就先对Segment进行扩容和重哈希操作。**特别需要注意的是，ConcurrentHashMap的重哈希实际上是对ConcurrentHashMap的某个段的重哈希，因此ConcurrentHashMap的每个段所包含的桶位自然也就不尽相同。**针对段进行rehash()操作的源码如下：
 
 ~~~java
+// 扩容时为了不影响正在进行的读线程，最好的方式是全部节点复制一次并重新添加
+// 这里根据扩容时节点迁移的性质，最大可能的重用一部分节点，这个性质跟1.8的HashMap中的高低位是一个道理，必须要求hash值是final的
 void rehash() {
     HashEntry<K,V>[] oldTable = table;    // 扩容前的table
     int oldCapacity = oldTable.length;
     if (oldCapacity >= MAXIMUM_CAPACITY)   // 已经扩到最大容量，直接返回
         return;
 
-    /*
-             * Reclassify nodes in each list to new Map.  Because we are
-             * using power-of-two expansion, the elements from each bin
-             * must either stay at same index, or move with a power of two
-             * offset. We eliminate unnecessary node creation by catching
-             * cases where old nodes can be reused because their next
-             * fields won't change. Statistically, at the default
-             * threshold, only about one-sixth of them need cloning when
-             * a table doubles. The nodes they replace will be garbage
-             * collectable as soon as they are no longer referenced by any
-             * reader thread that may be in the midst of traversing table
-             * right now.
-             */
+    /**
+     * HashEntry的next是final的，resize/rehash时需要重新new，这里的特殊之处就是最大程度重用HashEntry链尾部的一部分，尽量减少重新new的次数
+     */
 
     // 新创建一个table，其容量是原来的2倍
     HashEntry<K,V>[] newTable = HashEntry.newArray(oldCapacity<<1);   
@@ -505,6 +501,8 @@ void rehash() {
                 // Reuse trailing consecutive sequence at same slot
                 HashEntry<K,V> lastRun = e;
                 int lastIdx = idx;
+                // 这个循环是寻找HashEntry链最大的可重用的尾部
+                // 这里重用部分中，所有节点的去向相同，它们可以不用被复制
                 for (HashEntry<K,V> last = next;
                      last != null;
                      last = last.next) {
@@ -517,9 +515,11 @@ void rehash() {
                 }
 
                 // JDK直接将子链lastRun放到newTable[lastIdx]桶中
+                // 把重用部分整体放在扩容后的hash桶中
                 newTable[lastIdx] = lastRun;
 
                 // 对该子链之前的结点，JDK会挨个遍历并把它们复制到新桶中
+                // 复制不能重用的部分，并把它们插入到rehash后的所在HashEntry链的头部
                 for (HashEntry<K,V> p = e; p != lastRun; p = p.next) {
                     int k = p.hash & sizeMask;
                     HashEntry<K,V> n = newTable[k];
@@ -536,7 +536,7 @@ void rehash() {
 
 **由于扩容是按照2的幂次方进行的，所以扩展前在同一个桶中的元素，现在要么还是在原来的序号的桶里，或者就是原来的序号再加上一个2的幂次方，就这两种选择。**
 
-根据本文前面对HashEntry的介绍，我们知道链接指针next是final的，因此看起来我们好像只能把该桶的HashEntry链中的每个节点复制到新的桶中(这意味着我们要重新创建每个节点)，但事实上JDK对其做了一定的优化。因为在理论上原桶里的HashEntry链可能存在一条子链，这条子链上的节点都会被重哈希到同一个新的桶中，这样我们只要拿到该子链的头结点就可以直接把该子链放到新的桶中，从而避免了一些节点不必要的创建，提升了一定的效率。因此，JDK为了提高效率，它会首先去查找这样的一个子链，而且这个子链的尾节点必须与原hash链的尾节点是同一个，那么就只需要把这个子链的头结点放到新的桶中，其后面跟的一串子节点自然也就连接上了。对于这个子链头结点之前的结点，JDK会挨个遍历并把它们复制到新桶的链头(只能在表头插入元素)中。特别地，我们注意这段代码：
+根据本文前面对HashEntry的介绍，我们知道链接指针next是final的，因此看起来我们好像只能把该桶的HashEntry链中的每个节点复制到新的桶中(这意味着我们要重新创建每个节点)，但事实上JDK对其做了一定的优化。因为在理论上原桶里的HashEntry链可能存在一条子链，这条子链上的节点都会被重哈希到同一个新的桶中，这样我们只要拿到**该子链的头结点**就可以直接把该子链放到新的桶中，从而避免了一些节点不必要的创建，提升了一定的效率。因此，JDK为了提高效率，它会首先去查找这样的一个子链，而且这个子链的尾节点必须与原hash链的尾节点是同一个，那么就只需要把这个子链的头结点放到新的桶中，其后面跟的一串子节点自然也就连接上了。对于这个子链头结点之前的结点，JDK会挨个遍历并把它们复制到新桶的链头(只能在表头插入元素)中。特别地，我们注意这段代码：
 
 ~~~java
 for (HashEntry<K,V> last = next;
@@ -628,15 +628,63 @@ V get(Object key, int hash) {
 
 
 
+
+
+### remove
+
+![img](images/20170305144902001)
+
+~~~java
+// 因为1.6的HashEntry的next指针是final的，所以比普通的链表remove要复杂些，只有被删除节点的后面可以被重用，前面的都要再重新insert一次
+V remove(Object key, int hash, Object value) {
+    lock();
+    try {
+        int c = count - 1;
+        HashEntry<K,V>[] tab = table;
+        int index = hash & (tab.length - 1);
+        HashEntry<K,V> first = tab[index];
+        HashEntry<K,V> e = first;
+        while (e != null && (e.hash != hash || !key.equals(e.key)))
+            e = e.next;
+
+        V oldValue = null;
+        if (e != null) {
+            V v = e.value;
+            if (value == null || value.equals(v)) {
+                oldValue = v;
+                // All entries following removed node can stay in list, but all preceding ones need to be cloned.
+                // 因为next指针是final的，所以删除不能用简单的链表删除，需要把前面的节点都重新复制再插入一次，后面的节点可以重用
+                // 删除后，后面的可以重用的那部分顺序不变且还是放在最后，前面的被复制的那部分顺序颠倒地放在前面
+                ++modCount;
+                HashEntry<K,V> newFirst = e.next;
+                for (HashEntry<K,V> p = first; p != e; p = p.next)
+                    newFirst = new HashEntry<K,V>(p.key, p.hash, newFirst, p.value);
+                tab[index] = newFirst;
+                count = c; // write-volatile
+            }
+        }
+        return oldValue;
+    } finally {
+        unlock();
+    }
+}
+~~~
+
+
+
+
+
+
+
 ### 总结
 
-在ConcurrentHashMap进行存取时，首先会定位到具体的段，然后通过对具体段的存取来完成对整个ConcurrentHashMap的存取。特别地，无论是ConcurrentHashMap的读操作还是写操作都具有很高的性能：在进行读操作时不需要加锁，而在写操作时通过锁分段技术只对所操作的段加锁而不影响客户端对其它段的访问。
+在ConcurrentHashMap进行存取时，首先会**定位到具体的段**，然后通过**对具体段的存取来完成对整个ConcurrentHashMap的存取**。特别地，无论是ConcurrentHashMap的读操作还是写操作都具有很高的性能：在进行**读操作时不需要加锁**，而在**写操作时通过锁分段技术只对所操作的段加锁**而不影响客户端对其它段的访问。
 
 
 
 ## 为何读操作不需要加锁
 
-HashEntry对象几乎是不可变的(只能改变Value的值)，因为HashEntry中的key、hash和next指针都是final的。这意味着，我们不能把节点添加到链表的中间和尾部，也不能在链表的中间和尾部删除节点。这个特性可以保证：在访问某个节点时，这个节点之后的链接不会被改变，这个特性可以大大降低处理链表时的复杂性。与此同时，由于HashEntry类的value字段被声明是Volatile的，因此Java的内存模型就可以保证：某个写线程对value字段的写入马上就可以被后续的某个读线程看到。此外，由于在ConcurrentHashMap中不允许用null作为键和值，所以当读线程读到某个HashEntry的value为null时，便知道产生了冲突 —— 发生了重排序现象，此时便会加锁重新读入这个value值。这些特性互相配合，使得读线程即使在不加锁状态下，也能正确访问 ConcurrentHashMap。总的来说，ConcurrentHashMap读操作不需要加锁的奥秘在于以下三点：
+HashEntry对象几乎是不可变的(只能改变Value的值)，因为HashEntry中的key、hash和next指针都是final的。这意味着，我们不能把节点添加到链表的中间和尾部，也不能在链表的中间和尾部删除节点。这个特性可以保证：**在访问某个节点时，这个节点之后的链接不会被改变，这个特性可以大大降低处理链表时的复杂性。**与此同时，由于HashEntry类的value字段被声明是Volatile的，因此Java的内存模型就可以保证：某个写线程对value字段的写入马上就可以被后续的某个读线程看到。此外，由于在ConcurrentHashMap中不允许用null作为键和值，所以当读线程读到某个HashEntry的value为null时，便知道产生了冲突 —— 发生了重排序现象，此时便会**加锁重新读入**这个value值。这些特性互相配合，使得读线程即使在不加锁状态下，也能正确访问 ConcurrentHashMap。总的来说，ConcurrentHashMap读操作不需要加锁的奥秘在于以下三点：
 
 - **用HashEntery对象的不变性来降低读操作对加锁的需求；**
 - **用Volatile变量协调读写线程间的内存可见性；**
@@ -702,7 +750,7 @@ public V remove(Object key) {
         }
 ~~~
 
-　Segment的remove操作和前面提到的get操作类似，首先根据散列码找到具体的链表，然后遍历这个链表找到要删除的节点，最后把待删除节点之后的所有节点原样保留在新链表中，把待删除节点之前的每个节点克隆到新链表中
+　Segment的remove操作和前面提到的get操作类似，首先根据散列码找到具体的链表，然后遍历这个链表找到要删除的节点，最后把**待删除节点之后的所有节点原样保留在新链表中**，把待删除节点之前的每个节点克隆到新链表中
 
 **在执行remove操作时，原始链表并没有被修改，也就是说，读线程不会受同时执行 remove 操作的并发写线程的干扰。**
 
@@ -739,13 +787,13 @@ V get(Object key, int hash) {
 
 ### 总结
 
-在ConcurrentHashMap中，所有执行写操作的方法（put、remove和clear）在对链表做结构性修改之后，在退出写方法前都会去写这个count变量；所有未加锁的读操作（get、contains和containsKey）在读方法中，都会首先去读取这个count变量。根据 Java 内存模型，对同一个 volatile 变量的写/读操作可以确保：写线程写入的值，能够被之后未加锁的读线程“看到”。这个特性和前面介绍的HashEntry对象的不变性相结合，使得在ConcurrentHashMap中读线程进行读取操作时基本不需要加锁就能成功获得需要的值。**这两个特性以及加锁重读机制的互相配合，不仅减少了请求同一个锁的频率（读操作一般不需要加锁就能够成功获得值），也减少了持有同一个锁的时间（只有读到 value 域的值为 null 时 , 读线程才需要加锁后重读）。**
+在ConcurrentHashMap中，所有执行写操作的方法（put、remove和clear）在对链表做结构性修改之后，在**退出写方法前都会去写这个count变量**；所有未加锁的读操作（get、contains和containsKey）在读方法中，**都会首先去读取这个count变量**。根据 Java 内存模型，对同一个 volatile 变量的写/读操作可以确保：写线程写入的值，能够被之后未加锁的读线程“看到”。这个特性和前面介绍的HashEntry对象的不变性相结合，使得在ConcurrentHashMap中读线程进行读取操作时基本不需要加锁就能成功获得需要的值。**这两个特性以及加锁重读机制的互相配合，不仅减少了请求同一个锁的频率（读操作一般不需要加锁就能够成功获得值），也减少了持有同一个锁的时间（只有读到 value 域的值为 null 时 , 读线程才需要加锁后重读）。**
 
 
 
 ## 跨段操作
 
-在ConcurrentHashMap中，有些操作需要涉及到多个段，比如说size操作、containsValaue操作等。以size操作为例，如果我们要统计整个ConcurrentHashMap里元素的大小，那么就必须统计所有Segment里元素的大小后求和。我们知道，Segment里的全局变量count是一个volatile变量，那么在多线程场景下，我们是不是直接把所有Segment的count相加就可以得到整个ConcurrentHashMap大小了呢？显然不能，虽然相加时可以获取每个Segment的count的最新值，但是拿到之后可能累加前使用的count发生了变化，那么统计结果就不准了。所以最安全的做法，是在统计size的时候把所有Segment的put，remove和clean方法全部锁住，但是这种做法显然非常低效。
+在ConcurrentHashMap中，有些操作需要涉及到多个段，比如说size操作、containsValaue操作等。以size操作为例，如果要统计整个ConcurrentHashMap里元素的大小，那么**就必须统计所有Segment里元素的大小后求和**。Segment里的全局变量count是一个volatile变量，那么在多线程场景下，我们是不是直接把所有Segment的count相加就可以得到整个ConcurrentHashMap大小了呢？显然不能，虽然相加时可以获取每个Segment的count的最新值，但是拿到之后可能累加前使用的count发生了变化，那么统计结果就不准了。所以最安全的做法，是在统计size的时候把所有Segment的put，remove和clean方法全部锁住，但是这种做法显然非常低效。
 
 ~~~java
 /**
@@ -798,11 +846,229 @@ V get(Object key, int hash) {
     }
 ~~~
 
-size方法主要思路是先在没有锁的情况下对所有段大小求和，这种求和策略最多执行RETRIES_BEFORE_LOCK次(默认是两次)：在没有达到RETRIES_BEFORE_LOCK之前，求和操作会不断尝试执行（这是因为遍历过程中可能有其它线程正在对已经遍历过的段进行结构性更新）；在超过RETRIES_BEFORE_LOCK之后，如果还不成功就在持有所有段锁的情况下再对所有段大小求和。事实上，在累加count操作过程中，之前累加过的count发生变化的几率非常小，所以ConcurrentHashMap的做法是先尝试RETRIES_BEFORE_LOCK次通过不锁住Segment的方式来统计各个Segment大小，如果统计的过程中，容器的count发生了变化，则再采用加锁的方式来统计所有Segment的大小。
+size方法主要思路是先在**没有锁的情况下对所有段大小求和**，这种求和策略最多执行RETRIES_BEFORE_LOCK次(默认是**两次**)：在没有达到RETRIES_BEFORE_LOCK之前，求和操作会**不断尝试执行**（这是因为遍历过程中可能有其它线程正在对已经遍历过的段进行结构性更新）；**如果连续两次不加锁操作得到的结果一致，那么可以认为这个结果是正确的**。在超过RETRIES_BEFORE_LOCK之后，如果还不成功就在持有所有段锁的情况下**再对所有段大小求和**。事实上，在累加count操作过程中，之前累加过的count发生变化的几率非常小，所以ConcurrentHashMap的做法是先尝试RETRIES_BEFORE_LOCK次通过不锁住Segment的方式来统计各个Segment大小，如果统计的过程中，容器的count发生了变化，则再采用加锁的方式来统计所有Segment的大小。
 
-　　那么，ConcurrentHashMap是如何判断在统计的时候容器的段发生了结构性更新了呢？我们在前文中已经知道，Segment包含一个modCount成员变量，在会引起段发生结构性改变的所有操作(put操作、 remove操作和clean操作)里，都会将变量modCount进行加1，因此，**JDK只需要在统计size前后比较modCount是否发生变化就可以得知容器的大小是否发生变化。**
-
-
+那么，ConcurrentHashMap是如何判断在统计的时候容器的段发生了结构性更新了呢？前文中提到，Segment包含一个modCount成员变量，在会引起段发生结构性改变的所有操作(put操作、 remove操作和clean操作)里，**都会将变量modCount进行加1**，因此，**JDK只需要在统计size前后比较modCount是否发生变化就可以得知容器的大小是否发生变化。**
 
 
+
+## 1.7主要改动
+
+![img](images/ConcurrentHashMap-jdk1.7.png)
+
+![img](images/ConcurrentHashMap-code1.png)
+
+
+
+![img](images/ConcurrentHashMap-code13.png)
+
+- HashEntry的next指针不再是final的，**改为volatile**，并且用Unsafe提供的操作进行有序的延迟写入（lazySet）
+
+- jdk1.7开始，集合类大多使用懒初始化，也就是默认构造的集合类，底层的存储结构使用尽量少的空间，等真正添加元素时才真正初始化。1.7ConcurrentHashMap默认构造时只初始化 index = 0 的Segment，其余的都是put时初始化，另外会出现Segment = null的情况，需要多判断下
+
+- 大量使用 sun,misc.Unsafe 提供的底层操作方法，代替了一些实现比较简单的方法，稍微强化了方法的在并发上功能（比如对普通变量，也能够进行volatile读写），另外也带来了一些效率的提升
+
+- 因为1.7的HashEntry.next是volatile的，可以修改，因此remove操作简单了很多，就是基本的链表删除操作。
+
+  
+
+~~~java
+static final class HashEntry<K,V> {
+    final int hash; // hash是final的，1.7的HashMap中不是final的，用final对扩容比较友好
+    final K key;
+    volatile V value;
+    volatile HashEntry<K,V> next; // jdk1.7中next指针不再是final的，改为volatile，使用 setNext 方法（内部用Unsafe的提供的方法）更新
+
+    HashEntry(int hash, K key, V value, HashEntry<K,V> next) {
+        this.hash = hash;
+        this.key = key;
+        this.value = value;
+        this.next = next;
+    }
+
+    // putOrderedObject，这个方法只有作用于volatile才有效，它能保证写操作的之间的顺序性，但是不保证能立马被其他线程读取到最新结果，是一种lazySet，效率比volatile高，但是只有volatile的“一半”的效果
+    // 普通的volatile保证写操作的结果能立马被其他线程看到，不论其他线程是读操作还写操作
+    // putOrderedObject能保证其他线程在写操作时一定能看到这个方法对变量的改变，但是其他线程只是进行读操作时，不一定能看到这个方法对变量的改变
+    final void setNext(HashEntry<K,V> n) {
+        UNSAFE.putOrderedObject(this, nextOffset, n);
+    }
+
+    // 初始化执行Unsafe有关的操作
+    static final sun.misc.Unsafe UNSAFE;
+    static final long nextOffset;
+    static {
+        try {
+            UNSAFE = sun.misc.Unsafe.getUnsafe();
+            Class k = HashEntry.class;
+            nextOffset = UNSAFE.objectFieldOffset
+                (k.getDeclaredField("next"));
+        } catch (Exception e) {
+            throw new Error(e);
+        }
+    }
+}
+~~~
+
+
+
+~~~java
+// 1.7多了个scanAndLockForPut的操作，也完善了put触发扩容的机制（见1.6版本我在Segment.put中触发扩容处写的注释），同时处理了超过最大容量的情况，其余的跟1.6差不多
+final V put(K key, int hash, V value, boolean onlyIfAbsent) {
+    HashEntry<K,V> node = tryLock() ? null : scanAndLockForPut(key, hash, value); // 看scanAndLockForPut方法的注释
+    V oldValue;
+    try {
+        HashEntry<K,V>[] tab = table;
+        int index = (tab.length - 1) & hash;
+        HashEntry<K,V> first = entryAt(tab, index);
+        for (HashEntry<K,V> e = first;;) {
+            if (e != null) {
+                K k;
+                if ((k = e.key) == key || (e.hash == hash && key.equals(k))) {
+                    oldValue = e.value;
+                    if (!onlyIfAbsent) {
+                        e.value = value;
+                        ++modCount; // 1.7的put相同的key（这时候相当于replace）时也会修改modCount了，1.6是不会的，能够更大地保证containValue这个方法的准确性
+                    }
+                    break;
+                }
+                e = e.next;
+            }
+            else {
+                if (node != null)
+                    node.setNext(first); // 尝试添加在链表头部
+                else
+                    node = new HashEntry<K,V>(hash, key, value, first);
+                int c = count + 1; // 先加1
+                if (c > threshold && tab.length < MAXIMUM_CAPACITY) // 超过最大容量的情况，在put这里一并处理了
+                    rehash(node);
+                else
+                    setEntryAt(tab, index, node); // 不扩容时，直接让新节点成为头节点
+                ++modCount;
+                count = c;
+                oldValue = null;
+                break;
+            }
+        }
+    } finally {
+        unlock();
+    }
+    return oldValue;
+}
+
+// 1.7的rehash方法带有参数了，这个参数node就是要新put进去的node，新的rehash方法带有部分put的功能
+// 节点迁移的基本思路还是和1.6的一样
+@SuppressWarnings("unchecked")
+private void rehash(HashEntry<K,V> node) {
+    HashEntry<K,V>[] oldTable = table;
+    int oldCapacity = oldTable.length;
+    int newCapacity = oldCapacity << 1;
+    threshold = (int)(newCapacity * loadFactor);
+    HashEntry<K,V>[] newTable = (HashEntry<K,V>[]) new HashEntry[newCapacity];
+    int sizeMask = newCapacity - 1;
+    for (int i = 0; i < oldCapacity ; i++) {
+        HashEntry<K,V> e = oldTable[i];
+        if (e != null) {
+            HashEntry<K,V> next = e.next;
+            int idx = e.hash & sizeMask;
+            if (next == null) //  Single node on list 只有一个节点，简单处理
+                newTable[idx] = e;
+            else { // Reuse consecutive sequence at same slot 最大地重用链表尾部的一段连续的节点（这些节点扩容后在新数组中的同一个hash桶中），并标记位置
+                HashEntry<K,V> lastRun = e;
+                int lastIdx = idx;
+                for (HashEntry<K,V> last = next;
+                     last != null;
+                     last = last.next) {
+                    int k = last.hash & sizeMask;
+                    if (k != lastIdx) {
+                        lastIdx = k;
+                        lastRun = last;
+                    }
+                }
+                newTable[lastIdx] = lastRun;
+                // Clone remaining nodes 对标记之前的不能重用的节点进行复制，再重新添加到新数组对应的hash桶中去
+                for (HashEntry<K,V> p = e; p != lastRun; p = p.next) {
+                    V v = p.value;
+                    int h = p.hash;
+                    int k = h & sizeMask;
+                    HashEntry<K,V> n = newTable[k];
+                    newTable[k] = new HashEntry<K,V>(h, p.key, v, n);
+                }
+            }
+        }
+    }
+    int nodeIndex = node.hash & sizeMask; // add the new node 部分的put功能，把新节点添加到链表的最前面
+    node.setNext(newTable[nodeIndex]);
+    newTable[nodeIndex] = node;
+    table = newTable;
+}
+
+// 为put方法而编写的，在尝试获取锁的同时时进行一些准备工作的方法
+// 获取不到锁时，会尝试一定次数的准备工作，这个准备工作指的是“遍历并预先创建要被添加的新节点，同时监测链表是否改变”
+// 这样有可能在获取到锁时新的要被put的节点已经创建了，可以在put时少做一些工作
+// 准备工作中也会不断地尝试获取锁，超过最大准备工作尝试次数就直接阻塞等待地获取锁
+private HashEntry<K,V> scanAndLockForPut(K key, int hash, V value) {
+    HashEntry<K,V> first = entryForHash(this, hash);
+    HashEntry<K,V> e = first;
+    HashEntry<K,V> node = null;
+    int retries = -1; // negative while locating node
+    while (!tryLock()) {
+        HashEntry<K,V> f; // to recheck first below
+        if (retries < 0) {
+            if (e == null) { // 这条链表上没有“相等”的节点
+                if (node == null) // speculatively create node 预先创建要被添加的新节点
+                    node = new HashEntry<K,V>(hash, key, value, null);
+                retries = 0;  // 遍历完都没碰见“相等”，不再遍历了，改为 尝试直接获取锁，没获取到锁时尝试监测链表是否改变
+            }
+            else if (key.equals(e.key)) // 碰见“相等”，不再遍历了，改为 尝试直接获取锁，没获取到锁时尝试监测链表是否改变
+                retries = 0;
+            else             // 遍历链表
+                e = e.next;
+        }
+        else if (++retries > MAX_SCAN_RETRIES) { // 超过最大的准备工作尝试次数，放弃准备工作尝试，直接阻塞等待地获取锁
+            lock();
+            break;
+        }
+        else if ((retries & 1) == 0 && (f = entryForHash(this, hash)) != first) { // 间隔一次判断是否有新节点添加进去
+            e = first = f; // re-traverse if entry changed 如果链表改变，就重新遍历一次链表
+            retries = -1; // 重置次数
+        }
+    }
+    return node;
+}
+
+// 因为1.7的HashEntry.next是volatile的，可以修改，因此remove操作简单了很多，就是基本的链表删除操作。
+final V remove(Object key, int hash, Object value) {
+    if (!tryLock())
+        scanAndLock(key, hash);
+    V oldValue = null;
+    try {
+        HashEntry<K,V>[] tab = table;
+        int index = (tab.length - 1) & hash;
+        HashEntry<K,V> e = entryAt(tab, index);
+        HashEntry<K,V> pred = null;
+        while (e != null) {
+            K k;
+            HashEntry<K,V> next = e.next;
+            if ((k = e.key) == key || (e.hash == hash && key.equals(k))) {
+                V v = e.value;
+                if (value == null || value == v || value.equals(v)) {
+                    if (pred == null)
+                        setEntryAt(tab, index, next); // remove的是第一个节点
+                    else
+                        pred.setNext(next); // 直接链表操作，前面说了1.7的HashEntry.next是volatile的，可以修改，不再跟1.6一样是final的！！！
+                    ++modCount;
+                    --count;
+                    oldValue = v;
+                }
+                break;
+            }
+            pred = e;
+            e = next;
+        }
+    } finally {
+        unlock();
+    }
+    return oldValue;
+}
+~~~
 

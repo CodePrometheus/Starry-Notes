@@ -47,6 +47,8 @@
 
 - [ConcurrentHashMap1.8](KeyPoints/ConcurrentHashMap1.8.md)
 
+- [ConcurrentHashMap1.8扩容](KeyPoints/ConcurrentHashMap1.8扩容.md)
+
 - [ConcurrentHashMap常见问题](KeyPoints/ConcurrentHashMap常见问题.md)
 
 - [ArrayList](KeyPoints/ArrayList.md)
