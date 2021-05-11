@@ -218,7 +218,7 @@ public class HelloController {
 
 ![image-20200728212249215](https://gitee.com/codeprometheus/MyPicBed/raw/master/img/20210316202703.png)
 
-#### 2. DataId
+#### 2.DataId
 
 ```markdown
 # 1.DataId
