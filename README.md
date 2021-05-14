@@ -144,6 +144,8 @@
 ## 线程并发
 - [Zookeeper分布式锁](Concurrency/Zookeeper分布式锁.md)
 
+- [Synchronized锁升级过程](Concurrency/Synchronized锁升级过程.md)
+
 
 
 ## JVM
@@ -155,6 +157,16 @@
 - [GC调优](JVM/GC调优.md)
 
 - [类加载机制](JVM/类加载机制.md)
+
+- [内存模型](JVM/内存模型.md)
+
+- [重排序与happens-before](JVM/重排序与happens-before.md)
+
+
+
+## 设计模式
+
+
 
 
 

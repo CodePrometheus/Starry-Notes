@@ -1,4 +1,4 @@
-<img width="180px" style="border-radius: 50%" bor src="./images/favicon.ico">
+<img width="180px" style="border-radius: 0%" bor src="./images/favicon.ico">
 
 # Starry - Notes
 
