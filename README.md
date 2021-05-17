@@ -172,7 +172,7 @@
 
 - [创建型模式](DesignPatterns/创建型模式.md)
 
-- [结构型模式](DesignPatterns/[结构型模式.md)
+- [结构型模式](DesignPatterns/结构型模式.md)
 
 - [行为型模式](DesignPatterns/行为型模式.md)
 
