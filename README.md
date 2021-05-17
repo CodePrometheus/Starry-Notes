@@ -55,6 +55,8 @@
 
 - [一致性哈希](KeyPoints/ConsistentHashing.md)
 
+- [布隆过滤器](KeyPoints/布隆过滤器.md)
+
 - [HashMap1.7](KeyPoints/HashMap1.7.md)
 
 - [HashMap1.8](KeyPoints/HashMap1.8.md)
@@ -166,6 +168,13 @@
 
 ## 设计模式
 
+- [楔子](DesignPatterns/楔子.md)
+
+- [创建型模式](DesignPatterns/创建型模式.md)
+
+- [结构型模式](DesignPatterns/[结构型模式.md)
+
+- [行为型模式](DesignPatterns/行为型模式.md)
 
 
 
