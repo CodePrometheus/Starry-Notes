@@ -146,6 +146,8 @@
 ## 线程并发
 - [Zookeeper分布式锁](Concurrency/Zookeeper分布式锁.md)
 
+- [Redis分布式锁](Concurrency/Redis分布式锁.md)
+
 - [Synchronized锁升级过程](Concurrency/Synchronized锁升级过程.md)
 
 
@@ -178,8 +180,9 @@
 
 
 
-
 ## Docker&k8s
+
+- [K8s集群搭建](CloudNative/K8s集群搭建.md)
 
 
 
