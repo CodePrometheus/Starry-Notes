@@ -98,7 +98,7 @@ spec:
 ~~~
 
 - 名为 `nginx` 的 Headless Service 用来控制网络域名。
-- 名为 `web` 的 StatefulSet 有一个 Spec，它表明将在独立的 3 个 Pod 副本中启动 nginx 容器。
+- 名为 `web` 的 StatefulSet 有一个 Spec，它表明将在独立的 3 个 Pod 副本中启动 nginx 容器。spec即规范
 - `volumeClaimTemplates` 将通过 PersistentVolumes 驱动提供的 PersistentVolumes 来提供稳定的存储。
 
 
