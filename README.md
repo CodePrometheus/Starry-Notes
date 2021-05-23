@@ -184,6 +184,8 @@
 
 - [K8s集群搭建](CloudNative/K8s集群搭建.md)
 
+- [StatefulSet](CloudNative/StatefulSet.md)
+
 
 
 ## Linux
