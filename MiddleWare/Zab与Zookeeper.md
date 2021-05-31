@@ -446,6 +446,14 @@ Zookeeper通过ZAB原子广播协议来实现数据的最终顺序一致性，�
 
 
 
+> 1. 在选举时每个节点都有一个(myid,ZXID)表示；
+> 2. 对于初始化或leader宕机时，每个server发出一个投票给集群其他机器，所有请求挂起，开始选举（如实例一）；
+> 3. 超过半数的投票，就会成为Leader；
+> 4. 比较自己的选票和接收到的投票，优先比较ZXID，再比较myid。如果大于自己，更换自己的选票并告诉其他server；
+>
+> > - ZXID 是指当前服务器数据越新，其成为Leader可能性越大。
+> > - myid 是指当前server编号
+
 
 
 Leader的选举可以分为两个方面，同时选举主要包含事务zxid和myid，节点主要包含LEADING\FOLLOWING\LOOKING3个状态。
