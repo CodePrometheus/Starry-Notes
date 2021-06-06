@@ -15,6 +15,14 @@
 
 
 
+## RabbitMQ 发送失败怎么办？
+
+
+
+## RabbitMQ 发送重复怎么处理？
+
+
+
 
 
 ## RabbitMQ和其他消息队列的区别
@@ -26,6 +34,10 @@
 
 
 ## redis 列队消费和mq区别
+
+
+
+## RabbitMQ 消息堆积如何处理
 
 
 
@@ -59,9 +71,11 @@
 
 
 
+## 同步时high water RabbitMQ 如何实现容灾
 
 
 
+## RabbitMQ 发生脑裂怎么处理？
 
 
 
