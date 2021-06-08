@@ -109,9 +109,24 @@
 
 
 ## 操作系统
+
 - [操作系统基础](OperatingSystem/操作系统基础.md)
   
 - [进程与线程](OperatingSystem/进程与线程.md)
+
+- [进程线程间通信](OperatingSystem/进程线程间通信.md)
+
+- [内存管理](OperatingSystem/内存管理.md)
+
+- [用户态内核态](OperatingSystem/用户态内核态.md)
+
+- [虚拟内存](OperatingSystem/虚拟内存.md)
+
+- [页面置换](OperatingSystem/页面置换.md)
+
+- [调度算法](OperatingSystem/调度算法.md)
+
+
 
 
 
