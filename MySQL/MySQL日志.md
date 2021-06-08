@@ -1,5 +1,9 @@
 # MySQL日志
 
+[TOC]
+
+
+
 ## 分类
 
 - 错误日志
@@ -130,7 +134,7 @@ innodb通过**force log at commit**机制实现事务的持久性，即在事务
 
 
 
-### Redo
+### Redo Log
 
 #### 概念
 
@@ -149,71 +153,33 @@ write pos是当前记录的位置，一边写一边后移，写到第3号文件�
 
 **有了redo log，InnoDB就可以保证即使数据库发生异常重启，之前提交的记录都不会丢失，这个能力称为crash-safe**
 
-
-
-#### 组成
-
-redo log包括两部分：
-
-一是**内存中的日志缓冲**(redo log buffer)，该部分日志是易失性的；
-
-二是**磁盘上的重做日志文件**(redo log file)，该部分日志是持久的，并且是事务的记录是**顺序追加**的，性能非常高(磁盘的顺序写性能比内存的写性能差不了太多)
-
-InnoDB使用日志来减少提交事务时的开销。因为日志中已经记录了事务，就无须在每个事务提交时把缓冲池的脏块刷新(flush)到磁盘中。事务修改的数据和索引通常会映射到表空间的随机位置，所以刷新这些变更到磁盘需要很多随机IO。InnoDB假设使用常规磁盘，随机IO比顺序IO昂贵得多，因为一个IO请求需要时间把磁头移到正确的位置，然后等待磁盘上读出需要的部分，再转到开始位置。
-
-InnoDB用日志把随机IO变成**顺序IO**。一旦日志安全写到磁盘，事务就持久化了，即使断电了，InnoDB可以重放日志并且恢复已经提交的事务。
-
-为了确保每次日志都能写入到事务日志文件中，在每次将log buffer中的日志写入日志文件的过程中都会调用一次操作系统的fsync操作(即fsync()系统调用)。因为MariaDB/MySQL是工作在用户空间的，MariaDB/MySQL的log buffer处于用户空间的内存中。要写入到磁盘上的log file中(redo:ib_logfileN文件,undo:share tablespace或.ibd文件)，中间还要经过操作系统内核空间的os buffer，调用fsync()的作用就是将OS buffer中的日志刷到磁盘上的log file中。
-
-也就是说，从redo log buffer写日志到磁盘的redo log file中，过程如下：
-
-![img](images/v2-44c0e78a1222853dc2a99e596cf3fa13_720w.jpg)
+**redo log通常是物理日志，记录的是数据页的物理修改，而不是某一行或某几行修改成怎样怎样，它用来恢复提交后的物理数据页(恢复数据页，且只能恢复到最后一次提交的位置)。**
 
 
 
-> 在此处需要注意一点，一般所说的log file并不是磁盘上的物理日志文件，而是操作系统缓存中的log file，官方手册上的意思也是如此(例如：With a value of 2, the contents of the InnoDB log buffer are written to the log file after each transaction commit and the log file is flushed to disk approximately once per second)。但说实话，这不太好理解，既然都称为file了，应该已经属于物理文件了。所以在本文后续内容中都以os buffer或者file system buffer来表示官方手册中所说的Log file，然后log file则表示磁盘上的物理日志文件，即log file on disk。另外，之所以要经过一层os buffer，是因为open日志文件的时候，open没有使用O_DIRECT标志位，该标志位意味着绕过操作系统层的os buffer，IO直写到底层存储设备。不使用该标志位意味着将日志进行缓冲，缓冲到了一定容量，或者显式fsync()才会将缓冲中的刷到存储设备。使用该标志位意味着每次都要发起系统调用。比如写abcde，不使用o_direct将只发起一次系统调用，使用o_object将发起5次系统调用。
+> redo log什么时候落盘
 
-MySQL支持用户自定义在commit时如何将log buffer中的日志刷log file中。这种控制通过变量 innodb_flush_log_at_trx_commit 的值来决定。该变量有3种值：0、1、2，默认为1。但注意，这个变量只是控制commit动作是否刷新log buffer到磁盘。
+1）如果写入redo log buffer的日志已经占据了redo log buffer总容量的一半了，也就是超过了8MB的redo log在缓冲里了，此时就会把他们刷入到磁盘文件里去
 
-- 当设置为0的时候，事务提交时不会将log buffer中日志写入到os buffer，而是每秒写入os buffer并调用fsync()写入到log file on disk中。也就是说设置为0时是(大约)每秒刷新写入到磁盘中的，当系统崩溃，会丢失1秒钟的数据。
-- 当设置为1的时候，事务每次提交都会将log buffer中的日志写入os buffer并调用fsync()刷到log file on disk中。这种方式即使系统崩溃也不会丢失任何数据，但是因为每次提交都写入磁盘，IO的性能较差。
-- 当设置为2的时候，每次提交都仅写入到os buffer，然后是每秒调用fsync()将os buffer中的日志写入到log file on disk。
+（2）一个事务提交的时候，必须把他的那些redo log所在的redo log block都刷入到磁盘文件里去，只有这样，当事务提交之后，他修改的数据绝对不会丢失，因为redo log里有重做日志，随时可以恢复事务做的修改 （PS：redo log哪怕事务提交的时候写入磁盘文件，也是先进入os cache的，进入os的文件缓冲区里，所以是否提交事务就强行把redo log刷入物理磁盘文件中，这个需要设置对应的参数)
 
-![img](images/v2-6322074d51c4d1507be3c3159ab583bc_720w.jpg)
+（3）后台线程定时刷新，有一个后台线程每隔1秒就会把redo log buffer里的redo log block刷到磁盘文件里去
 
-在主从复制结构中，要保证事务的持久性和一致性，需要对日志相关变量设置为如下：
-
-- 如果启用了二进制日志，则设置sync_binlog=1，即每提交一次事务同步写到磁盘中。
-- 总是设置innodb_flush_log_at_trx_commit=1，即每提交一次事务都写到磁盘中。
-
-上述两项变量的设置保证了：每次提交事务都写入二进制日志和事务日志，并在提交时将它们刷新到磁盘中。
+（4）MySQL关闭的时候，redo log block都会刷入到磁盘里去
 
 
 
-#### 空间管理
-
-Redo log文件以`ib_logfile[number]`命名，Redo log 以顺序的方式写入文件文件，写满时则回溯到第一个文件，进行覆盖写。（但在做redo checkpoint时，也会更新第一个日志文件的头部checkpoint标记，所以严格来讲也不算顺序写）。
-
-实际上redo log有两部分组成：redo log buffer 跟redo log file。buffer pool中把数据修改情况记录到redo log buffer，出现以下情况，再把redo log刷下到redo log file：
-
-- Redo log buffer空间不足
-- 事务提交（依赖innodb_flush_log_at_trx_commit参数设置）
-- 后台线程
-- 做checkpoint
-- 实例shutdown
-- binlog切换
-
-
-
-
-
-### Undo
+### Undo Log
 
 #### 概念
 
 undo日志用于**存放数据修改被修改前的值**，假设修改 tba 表中 id=2的行数据，把Name='B' 修改为Name = 'B2' ，那么undo日志就会用来存放Name='B'的记录，如果这个修改出现异常，可以使用undo日志来实现回滚操作，保证事务的一致性。
 
-对数据的变更操作，主要来自 INSERT UPDATE DELETE，而UNDO LOG中分为两种类型，一种是 **INSERT_UNDO**（INSERT操作），记录插入的唯一键值；一种是 **UPDATE_UNDO**（包含UPDATE及DELETE操作），记录修改的唯一键值以及old column记录。
+对数据的变更操作，主要来自 INSERT UPDATE DELETE，而Undo Log中分为两种类型，
+
+一种是 **INSERT_UNDO**（INSERT操作），记录插入的唯一键值；
+
+一种是 **UPDATE_UNDO**（包含UPDATE及DELETE操作），记录修改的唯一键值以及old column记录。
 
 
 
@@ -228,100 +194,6 @@ undo log和redo log记录物理日志不一样，它是**逻辑日志**。可以
 当执行rollback时，就可以从undo log中的逻辑记录读取到相应的内容并进行回滚。有时候应用到行版本控制的时候，也是通过undo log来实现的：当读取的某一行被其他事务锁定时，它可以从undo log中分析出该行记录以前的数据是什么，从而提供该行版本信息，让用户实现非锁定一致性读取。
 
 
-
-#### 存储方式
-
-innodb存储引擎对undo的管理采用段的方式。rollback segment称为回滚段，每个回滚段中有1024个undo log segment。
-
-在以前老版本，只支持1个rollback segment，这样就只能记录1024个undo log segment。后来MySQL5.5可以支持128个rollback segment，即支持128*1024个undo操作，还可以通过变量 innodb_undo_logs (5.6版本以前该变量是 innodb_rollback_segments )自定义多少个rollback segment，默认值为128。
-
-undo log默认存放在共享表空间中。
-
-```mysql
-[root@xuexi data]# ll /mydata/data/ibda*
--rw-rw---- 1 mysql mysql 79691776 Mar 31 01:42 /mydata/data/ibdata1
-```
-
-如果开启了 innodb_file_per_table ，将放在每个表的.ibd文件中。
-
-在MySQL5.6中，undo的存放位置还可以通过变量 innodb_undo_directory 来自定义存放目录，默认值为"."表示datadir。
-
-默认rollback segment全部写在一个文件中，但可以通过设置变量 innodb_undo_tablespaces 平均分配到多少个文件中。该变量默认值为0，即全部写入一个表空间文件。该变量为静态变量，只能在数据库示例停止状态下修改，如写入配置文件或启动时带上对应参数。但是innodb存储引擎在启动过程中提示，不建议修改为非0的值，如下：
-
-```mysql
-2017-03-31 13:16:00 7f665bfab720 InnoDB: Expected to open 3 undo tablespaces but was able
-2017-03-31 13:16:00 7f665bfab720 InnoDB: to find only 0 undo tablespaces.
-2017-03-31 13:16:00 7f665bfab720 InnoDB: Set the innodb_undo_tablespaces parameter to the
-2017-03-31 13:16:00 7f665bfab720 InnoDB: correct value and retry. Suggested value is 0
-```
-
-
-
-#### 相关参数
-
-~~~mysql
-mysql> show global variables like '%undo%';
-+--------------------------+------------+
-| Variable_name            | Value      |
-+--------------------------+------------+
-| innodb_max_undo_log_size | 1073741824 |
-| innodb_undo_directory    | ./         |
-| innodb_undo_log_truncate | OFF        |
-| innodb_undo_logs         | 128        |
-| innodb_undo_tablespaces  | 3          |
-+--------------------------+------------+
- 
-mysql> show global variables like '%truncate%';
-+--------------------------------------+-------+
-| Variable_name                        | Value |
-+--------------------------------------+-------+
-| innodb_purge_rseg_truncate_frequency | 128   |
-| innodb_undo_log_truncate             | OFF   |
-~~~
-
-- innodb_max_undo_log_size
-
-控制最大undo tablespace文件的大小，当启动了innodb_undo_log_truncate 时，undo tablespace 超过innodb_max_undo_log_size 阀值时才会去尝试truncate。该值默认大小为1G，truncate后的大小默认为10M。
-
-- innodb_undo_tablespaces
-
-设置undo独立表空间个数，范围为0-128， 默认为0，0表示表示不开启独立undo表空间 且 undo日志存储在ibdata 文件中。该参数只能在最开始初始化MySQL实例的时候指定，如果实例已创建，这个参数是不能变动的，如果在数据库配置文 件 .cnf 中指定innodb_undo_tablespaces 的个数大于实例创建时的指定个数，则会启动失败，提示该参数设置有误。
-
-如果设置了该参数为n（n>0），那么就会在undo目录下创建n个undo文件（undo001，undo002 ...... undo n），每个文件默认大小为10M.
-
- 当DB写压力较大时，可以设置独立UNDO表空间，把UNDO LOG从ibdata文件中分离开来，指定 innodb_undo_directory目录存放，可以制定到高速磁盘上，加快UNDO LOG 的读写性能。
-
-- innodb_undo_log_truncate
-
-InnoDB的purge线程，根据innodb_undo_log_truncate设置开启或关闭、innodb_max_undo_log_size的参数值，以及truncate的频率来进行空间回收和 undo file 的重新初始化。
-
-**该参数生效的前提是，已设置独立表空间且独立表空间个数大于等于2个。**
-
-purge线程在truncate undo log file的过程中，需要检查该文件上是否还有活动事务，如果没有，需要把该undo log file标记为不可分配，这个时候，undo log 都会记录到其他文件上，所以至少需要2个独立表空间文件，才能进行truncate 操作，标注不可分配后，会创建一个独立的文件undotrunc.log，__记录现在正在truncate 某个undo log文件，然后开始初始化undo log file到10M，操作结束后，删除表示truncate动作的 undotrunc.log 文件__，这个文件保证了即使在truncate过程中发生了故障重启数据库服务，重启后，服务发现这个文件，也会继续完成truncate操作，删除文件结束后，标识该undo log file可分配。
-
-- innodb_purge_rseg_truncate_frequency
-
-用于控制purge回滚段的频度，默认为128。假设设置为n，则说明，当Innodb Purge操作的协调线程 purge事务128次时，就会触发一次History purge，检查当前的undo log 表空间状态是否会触发truncate。
-
-
-
-#### 空间管理
-
-如果需要设置独立表空间，需要在初始化数据库实例的时候，指定独立表空间的数量。
-
-UNDO内部由多个回滚段组成，即 Rollback segment，一共有128个，保存在ibdata系统表空间中，分别从resg slot0 - resg slot127，每一个resg slot，也就是每一个回滚段，内部由1024个undo segment 组成。
-
-回滚段（rollback segment）分配如下：
-
-- slot 0 ，预留给系统表空间；
-- slot 1- 32，预留给临时表空间，每次数据库重启的时候，都会重建临时表空间；
-- slot33-127，如果有独立表空间，则预留给UNDO独立表空间；如果没有，则预留给系统表空间；
-
-回滚段中除去32个提供给临时表事务使用，剩下的 128-32=96个回滚段，可执行 96*1024 个并发事务操作，每个事务占用一个 undo segment slot，注意，如果事务中有临时表事务，还会在临时表空间中的 undo segment slot 再占用一个 undo segment slot，即占用2个undo segment slot。如果错误日志中有：`Cannot find a free slot for an undo log。`则说明并发的事务太多了，需要考虑下是否要分流业务。
-
-回滚段（rollback segment ）采用 轮询调度的方式来分配使用，如果设置了独立表空间，那么就不会使用系统表空间回滚段中undo segment，而是使用独立表空间的，同时，如果回顾段正在 Truncate操作，则不分配。
-
-![](images/image-20210415150210916.png)
 
 
 
@@ -352,20 +224,20 @@ UNDO内部由多个回滚段组成，即 Rollback segment，一共有128个，�
 
  
 
- A. 尽量保持Redo Log存储在一段连续的空间上。因此在系统第一次启动时就会将日志文件的空间完全分配。 以顺序追加的方式记录Redo Log,通过顺序IO来改善性能。
+ A. **尽量保持Redo Log存储在一段连续的空间上**。因此在系统第一次启动时就会将日志文件的空间完全分配。 以顺序追加的方式记录Redo Log,通过顺序IO来改善性能。
 
- B. 批量写入日志。日志并不是直接写入文件，而是先写入redo log buffer.当需要将日志刷新到磁盘时 (如事务提交),将许多日志一起写入磁盘.
+ B. **批量写入日志**。日志并不是直接写入文件，而是先写入redo log buffer.当需要将日志刷新到磁盘时 (如事务提交),将许多日志一起写入磁盘.
 
- C. 并发的事务共享Redo Log的存储空间，它们的Redo Log按语句的执行顺序，依次交替的记录在一起，
+ C. **并发的事务共享Redo Log的存储空间**，它们的Redo Log按语句的执行顺序，依次交替的记录在一起，
    以减少日志占用的空间。例如,Redo Log中的记录内容可能是这样的：
    记录1: <trx1, insert …>
    记录2: <trx2, update …>
    记录3: <trx1, delete …>
    记录4: <trx3, update …>
    记录5: <trx2, insert …>
- D. 因为C的原因,当一个事务将Redo Log写入磁盘时，也会将其他未提交的事务的日志写入磁盘。
+ D. 因为C的原因,当一个事务将Redo Log写入磁盘时，**也会将其他未提交的事务的日志写入磁盘**。
 
- E. Redo Log上只进行顺序追加的操作，当一个事务需要回滚时，它的Redo Log记录也不会从Redo Log中删除掉。
+ E. Redo Log上**只进行顺序追加的操作**，当一个事务需要回滚时，它的Redo Log记录也**不会**从Redo Log中删除掉。
 
 
 
@@ -431,8 +303,10 @@ MySQL的二进制日志（binary log）是一个二进制文件，主要记录**
 ### 与redo log区别
 
 1. redo log是InnoDB存储引擎产生的；binlog是MySQL的Server层实现的，所有引擎都可以使用。
-2. redo log是物理日志，记录的是“在某个数据页上做了什么修改”；binlog是逻辑日志，记录的是这个语句的原始逻辑，比如“给ID=2这一行的c字段加1 ”。
-3. redo log是循环写的，空间固定会用完；binlog是可以追加写入的。“追加写”是指binlog文件写到一定大小后会切换到下一个，并不会覆盖以前的日志。
+2. redo log是**物理日志**，记录的是“在某个数据页上做了什么修改”；binlog是**逻辑日志**，记录的是这个语句的**原始逻辑**，比如“给ID=2这一行的c字段加1 ”。
+3. 依靠binlog是没有crash-safe能力的，主要是用于**主从复制的时候做同步用的**。直接把binlog给从机，从机按照binlog执行语句就行了
+4. redo log作为异常宕机或者介质故障后的数据恢复使用
+5. redo log是循环写的，空间固定会用完；**binlog是可以追加写入**。“追加写”是指binlog文件写到一定大小后会切换到下一个，并不会覆盖以前的日志。
 
 > 假设一个大事务，对tba做10万行的记录插入，在这个过程中，一直不断的往redo log顺序记录，而binary log不会记录，知道这个事务提交，才会一次写入到binary log文件中。binary log的记录格式有3种：row，statement跟mixed，不同格式记录形式不一样。
 
@@ -454,7 +328,7 @@ binnary log是记录**数据库内部的修改情况**，而general log是记录
 
 
 
-### 流程
+### Redo Log和Bin Log两阶段提交
 
 一个简单的update语句执行时，内部流程如下
 
@@ -464,11 +338,13 @@ binnary log是记录**数据库内部的修改情况**，而general log是记录
 
 1. 执行器先找引擎取ID=2这一行。ID是主键，引擎直接用树搜索找到这一行。如果ID=2这一行所在的数据页本来就在内存中，就直接返回给执行器；否则，需要先从磁盘读入内存，然后再返回。
 2. 执行器拿到引擎给的行数据，把这个值加上1，比如原来是N，现在就是N+1，得到新的一行数据，再调用引擎接口写入这行新数据。
-3. 引擎将这行新数据更新到内存中，同时将这个更新操作记录到redo log里面，此时redo log处于prepare状态。然后告知执行器执行完成了，随时可以提交事务。
-4. 执行器生成这个操作的binlog，并把binlog写入磁盘。
-5. 执行器调用引擎的提交事务接口，引擎把刚刚写入的redo log改成提交（commit）状态，更新完成。
+3. 引擎将这行新数据**更新到内存**中，同时将这个更新操作记录到**redo log**里面，此时redo log处于**prepare状态**。然后告知执行器执行完成了，随时可以提交事务。
+4. 执行器**生成这个操作的binlog**，并把binlog**写入磁盘**。
+5. 执行器调用引擎的提交事务接口，引擎把刚刚写入的**redo log改成提交（commit）状态**，更新完成。
 
 
+
+当MySQL写完redolog并将它标记为prepare状态时，并且会在redolog中记录一个XID，它**全局唯一的标识着这个事务**。只要这个XID和binlog中记录的XID是一致的，MySQL就会认为binlog和redolog逻辑上一致，就会commit。而如果仅仅是rodolog中记录了XID，binlog中没有，MySQL就会RollBack
 
 可以注意到，最后将redo log的写入拆成了两个步骤，prepare和commit，即两阶段提交，这是为了让两份日志之间的逻辑一致
 
@@ -482,12 +358,12 @@ binnary log是记录**数据库内部的修改情况**，而general log是记录
 
 1. **先写redo log后写binlog**。假设在redo log写完，binlog还没有写完的时候，MySQL进程异常重启。由于我们前面说过的，redo log写完之后，系统即使崩溃，仍然能够把数据恢复回来，所以恢复后这一行c的值是1。
    但是由于binlog没写完就crash了，这时候binlog里面就没有记录这个语句。因此，之后备份日志的时候，存起来的binlog里面就没有这条语句。
-   然后你会发现，如果需要用这个binlog来恢复临时库的话，由于这个语句的binlog丢失，这个临时库就会少了这一次更新，恢复出来的这一行c的值就是0，与原库的值不同。
+   然后你会发现，如果需要用这个binlog来恢复临时库的话，由于这个语句的binlog丢失，这个临时库**就会少了这一次更新，恢复出来的这一行c的值就是0，与原库的值不同**。
 2. **先写binlog后写redo log**。如果在binlog写完之后crash，由于redo log还没写，崩溃恢复以后这个事务无效，所以这一行c的值是0。但是binlog里面已经记录了“把c从0改成1”这个日志。所以，在之后用binlog来恢复的时候就多了一个事务出来，恢复出来的这一行c的值就是1，与原库的值不同。
 
-如果不使用“两阶段提交”，那么数据库的状态就有可能和用它的日志恢复出来的库的状态不一致。
+如果不使用“两阶段提交”，**那么数据库的状态就有可能和用它的日志恢复出来的库的状态不一致**。
 
-简单说，redo log和binlog都可以用于表示事务的提交状态，而两阶段提交就是让这两个状态保持逻辑上的一致。
+简单说，redo log和bin log都可以用于表示事务的提交状态，而两阶段提交就是让这两个状态保持逻辑上的一致。
 
 
 
@@ -513,7 +389,7 @@ binnary log是记录**数据库内部的修改情况**，而general log是记录
 
 
 
-### **格式**
+### 记录格式
 
 binlog格式分为: STATEMENT、ROW和MIXED三种，详情如下:
 
@@ -527,7 +403,7 @@ STATEMENT格式的binlog记录的是数据库上执行的原生SQL语句。这�
 
 - ROW
 
-从MySQL5.1开始支持基于行的复制，也就是基于数据的复制，基于行的更改。这种方式会将实际数据记录在二进制日志中，它有其自身的一些优点和缺点，最大的好处是可以正确地复制每一行数据。一些语句可以被更加有效地复制，另外就是几乎没有基于行的复制模式无法处理的场景，对于所有的SQL构造、触发器、存储过程等都能正确执行。主要的缺点就是二进制日志可能会很大，而且不直观，所以，你不能使用mysqlbinlog来查看二进制日志。也无法通过看二进制日志判断当前执行到那一条SQL语句了。
+从MySQL5.1开始支持基于行的复制，也就是基于数据的复制，基于行的更改。这种方式会将实际数据记录在二进制日志中，它有其自身的一些优点和缺点，最大的好处是可以**正确地复制每一行数据**。一些语句可以被更加有效地复制，另外就是**几乎没有基于行的复制模式无法处理的场景**，对于所有的SQL构造、触发器、存储过程等都能正确执行。主要的缺点就是二进制日志**可能会很大，而且不直观**，所以，你不能使用mysqlbinlog来查看二进制日志。也无法通过看二进制日志判断当前执行到那一条SQL语句了。
 
 现在对于ROW格式的二进制日志基本是标配了，主要是因为它的优势远远大于缺点。并且由于ROW格式记录行数据，所以可以基于这种模式做一些DBA工具，比如数据恢复，不同数据库之间数据同步等。
 

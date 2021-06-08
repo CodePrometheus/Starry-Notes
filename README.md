@@ -87,7 +87,7 @@
 
 ## 中间件
 
-- [Zookeeper](MiddleWare/Zookeeper.md)
+- [Zookeeper](MiddleWare/Zookeeper基础.md)
   
 - [Zookeeper应用场景及相应问题处理](MiddleWare/Zookeeper应用场景及相应问题处理.md)
   
@@ -96,6 +96,10 @@
 - [RabbitMQ基础](MiddleWare/RabbitMQ基础.md)
   
 - [RabbitMQ深入](MiddleWare/RabbitMQ深入.md)
+
+- [Redis数据结构](MiddleWare/Redis数据结构.md)
+
+- [Redis持久化机制](MiddleWare/Redis持久化机制.md)
 
 
 
@@ -170,9 +174,14 @@
 
 - [MySQL索引常见问题](MySQL/MySQL索引常见问题.md)
 
+- [SQL优化](MySQL/SQL优化.md)
+
 - [B和B+Tree](MySQL/B和B+Tree.md)
 
 - [MySQL常见问题](MySQL/MySQL常见问题.md)
+
+- [数据库三范式](MySQL/数据库三范式.md)
+
 
 
 
@@ -241,6 +250,8 @@
 ## Linux
 
 - [三剑客](Linux/三剑客.md)
+
+
 
 ## Spring源码
 

@@ -33,12 +33,19 @@ MySQL每次只使用一个索引，与其说 数据库查询只能用一个索�
 ## 索引失效
 
 - 组合索引为使用最左前缀，例如组合索引（A，B），where B = b 不会使用索引
-- like未使用最左前缀，where A like "%China"，使用like查询时以%开头会导致索引失效索引失效
+
+- like未使用最左前缀，where A like "%China"，使用like查询时以%开头会导致索引失效索引失效，后缀有%时，索引有效
+
 - 搜索一个索引而在另一个索引上做 order by， where A = a order by B，只会使用A上的索引，因为**查询只使用一个索引**。
-- **or会使索引失效**。如果**查询字段相同，也可以使用索引。**例如 where A = a1 or A = a2（生效），where A=a or B = b （失效）
+
+- **or会使索引失效**。如果**只有当or左右查询字段均为索引时，才会生效。**例如 where A = a1 or A = a2（生效），where A=a or B = b （失效）
+
 - 在索引列上的操作，**函数**upper()等，or、！ = （<>）,not in 等索引失效，例如`select * from table_name where a != 1`
+
 - 在索引上进行计算导致失效 例如`select * from table_name where a + 1 = 2`
-- 在索引的类型上进行数据类型的隐形转换，会导致索引失效，例如字符串一定要加引号，假设 `select * from table_name where a = '1'`会使用到索引，如果写成`select * from table_name where a = 1`则会导致索引失效。
+
+- 在索引的类型上进行数据类型的**隐形转换**，会导致索引失效，例如字符串一定要加引号，假设 `select * from table_name where a = '1'`会使用到索引，如果写成`select * from table_name where a = 1`则会导致索引失效。varchar不加单引号的话可能会自动转换为int型，使索引无效，产生全表扫描。
+
 - 索引字段上使用 is null/is not null判断时会导致索引失效，例如`select * from table_name where a is null`
 
 
