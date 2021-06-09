@@ -172,7 +172,139 @@ Exchange有四种类型 分别是：
 
 ### 2.6 RabbitMQ死信队列
 
+说白了 就是 没有被消费的消息 换个地方重新被消费
+
+(1) 死信队列就是消息进入另一个交换机，可以修改其routingKey进入另一个队列。发生的情况为：消息被拒绝（basic.reject/ basic.nack）并且不再重新投递 requeue=false、消息TTL过期、队列达到最大长度。
+
+(2)队列和消息都有个TTL生存时间，队列的TTL到达后队列会自动删除，消息不会进入死信队列；消息的生存时间到达后会进入死信队列。消息的生存时间可以在队列设置所有消息的TTL，也可以对某个消息单独设置TTL
+
+(3) 延迟队列就是利用死信队列，给消息设置TTL，到期后进入另一个死信队列，我们可以监听另一个死信队列。
+
+---
+
+死信队列：DLX，dead-letter-exchange。利用DLX，当消息在一个队列中变成死信 (dead message) 之后，它能被重新publish到另一个Exchange，**这个Exchange就是DLX**。DLX是一个正常的交换机，它们可以像普通的交换机一样使用。
+
+ 延迟队列：利用死信可以实现延迟队列。 比如设置队列有限期为60s，到期移动到另一个队列。比如订单30s，30s之后移动到另一个死信队列，我们可以监听另一个死信队列。
+
 > 订单服务过期是怎么设计的
+>
+> 比如说一个场景我们在使用抖音抢购有时候五分钟未下单我们就可以再次抢单。简单的说，用户下单了，库存减一；5分钟未支付，获取到该订单，将商品库存加一。
+
+~~~java
+// 生产者：声明队列的消息生存时间、声明死信交换机和路由key
+public class Producer {
+
+    public static ConnectionFactory getConnectionFactory() {
+        // 创建连接工程，下面给出的是默认的case
+        ConnectionFactory factory = new ConnectionFactory();
+        factory.setHost("192.168.99.100");
+        factory.setPort(5672);
+        factory.setUsername("guest");
+        factory.setPassword("guest");
+        factory.setVirtualHost("/");
+        return factory;
+    }
+
+    public static void main(String[] args) throws IOException, TimeoutException {
+        ConnectionFactory connectionFactory = getConnectionFactory();
+        Connection newConnection = null;
+        Channel createChannel = null;
+        try {
+            newConnection = connectionFactory.newConnection();
+            createChannel = newConnection.createChannel();
+
+            // 声明一个正常的direct类型的交换机
+            createChannel.exchangeDeclare("order.exchange", BuiltinExchangeType.DIRECT);
+            // 声明死信交换机为===order.dead.exchange
+            String dlxName = "order.dead.exchange";
+            createChannel.exchangeDeclare(dlxName, BuiltinExchangeType.DIRECT);
+            // 声明队列并指定死信交换机为上面死信交换机
+            Map<String, Object> arg = new HashMap<String, Object>();
+            arg.put("x-dead-letter-exchange", dlxName);
+            // 修改进入死信队列的routingkey，如果不修改会使用默认的routingKey
+            arg.put("x-dead-letter-routing-key", "routing_key_myQueue_dead");
+            // 设置消息的生存时间是1分钟，超时进入死信队列
+            arg.put("x-message-ttl", 60000);
+            createChannel.queueDeclare("myQueue", true, false, false, arg);
+
+            // 绑定正常的queue
+            createChannel.queueBind("myQueue", "order.exchange", "routing_key_myQueue");
+
+            String message = "订单编号： 001, 订单生成时间： " + (new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
+            createChannel.basicPublish("order.exchange", "routing_key_myQueue", null, message.getBytes());
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (createChannel != null) {
+                createChannel.close();
+            }
+            if (newConnection != null) {
+                newConnection.close();
+            }
+        }
+
+    }
+}
+~~~
+
+~~~java
+// 消费者： 监听死信交换机和路由key
+public class Consumer2 {
+
+    public static ConnectionFactory getConnectionFactory() {
+        // 创建连接工程，下面给出的是默认的case
+        ConnectionFactory factory = new ConnectionFactory();
+        factory.setHost("192.168.99.100");
+        factory.setPort(5672);
+        factory.setUsername("guest");
+        factory.setPassword("guest");
+        factory.setVirtualHost("/");
+        return factory;
+    }
+
+    public static void main(String[] args) throws IOException, TimeoutException {
+        ConnectionFactory connectionFactory = getConnectionFactory();
+        Connection newConnection = null;
+        Channel createChannel = null;
+        try {
+            newConnection = connectionFactory.newConnection();
+            createChannel = newConnection.createChannel();
+
+            createChannel.queueDeclare("order.expiredQueue", true, false, false, null);
+            // 队列绑定交换机-channel.queueBind(队列名, 交换机名, 路由key[广播消息设置为空串])
+            createChannel.queueBind("order.expiredQueue", "order.dead.exchange", "routing_key_myQueue_dead");
+            createChannel.basicConsume("order.expiredQueue", false, "", new DefaultConsumer(createChannel) {
+                @Override
+                public void handleDelivery(String consumerTag, Envelope envelope, BasicProperties properties,
+                        byte[] body) throws IOException {
+
+                    String msg = new String(body, "UTF-8");
+                    System.out.println("当前时间： " + (new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date())));
+                    System.out.println("死信队列中收到的订单信息： " + msg);
+                    // 处理超时订单，库存加一
+                    
+                    // 应答
+                    long deliveryTag = envelope.getDeliveryTag();
+                    Channel channel = this.getChannel();
+                    channel.basicAck(deliveryTag, true);
+                }
+            });
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+        }
+
+    }
+}
+~~~
+
+~~~java
+当前时间： 2020-11-07 12:52:48
+死信队列中收到的订单信息： 订单编号： 001, 订单生成时间： 2020-11-07 12:51:48
+~~~
+
+
 
 
 
