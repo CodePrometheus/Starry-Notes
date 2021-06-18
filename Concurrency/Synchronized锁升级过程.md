@@ -8,9 +8,21 @@
 
 
 
+## 非公平锁
+
+>  *synchronized* 是非*公平锁*,可以重入
+
+1)公平锁：指多个线程按照申请锁的顺序来获取锁，类似于日常的排队
+
+(2)非公平锁：多个线程获取锁的顺序并不是按照申请锁的顺序来，通俗来说就是插队
+
+
+
+
+
 ## 作用范围
 
-synchronized能同时保证可见性，原子性，有序性，注意不同于volatile只能保证可见性，有序性，不能保证原子性
+synchronized能同时保证可见性，原子性，有序性，注意不同于volatile只能保证可见性，有序性，**不能保证原子性**
 
 synchronized可以用在如下地方，也即**三种主要的使用方式**
 
@@ -51,6 +63,8 @@ public class SynchronizedDemo {
 ## 实现原理
 
 > JVM基于进入和退出Monitor对象来实现方法同步和代码块同步
+>
+> 使用一种monitor机制，在进入锁时候先执行monitorenter指令。退出的时候执行monitorexit指令
 
 ### Java对象组成
 
@@ -133,7 +147,7 @@ ObjectMonitor() {
 
 注意
 
-- synchronized是可重入的，所以不会自己把，自己锁死
+- synchronized是可重入的，所以不会自己把自己锁死
 - synchronized锁一旦被一个线程持有，其他试图获取该锁的线程将被阻塞。
 
 
@@ -191,7 +205,7 @@ public class SyncCodeBlock {
 
 
 
-代码块的同步是利用monitorenter和monitorexit这两个字节码指令。它们分别位于同步代码块的开始和结束位置。当jvm执行到monitorenter指令时，当前线程试图获取monitor对象的所有权，如果未加锁或者已经被当前线程所持有，就把锁的计数器+1；当执行monitorexit指令时，锁计数器-1；当锁计数器为0时，该锁就被释放了。如果获取monitor对象失败，该线程则会进入阻塞状态，直到其他线程释放锁。
+代码块的同步是利用monitorenter和monitorexit这两个字节码指令。它们分别位于同步代码块的开始和结束位置。当jvm执行到monitorenter指令时，**当前线程试图获取monitor对象的所有权**，如果未加锁或者已经被当前线程所持有，就把锁的计数器+1；当执行monitorexit指令时，锁计数器-1；当锁计数器为0时，该锁就被释放了。如果获取monitor对象失败，该线程则会进入阻塞状态，直到其他线程释放锁。
 
 
 
@@ -235,6 +249,8 @@ public class SyncMethod {
 
 
 ## 锁升级
+
+
 
 ![img](images/1341698-20200502223414124-1598100032.png)
 

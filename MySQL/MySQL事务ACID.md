@@ -100,7 +100,7 @@ update account set money=money+100 where name=’李四’;
 
 ## 实现机制
 
-> MySQL的存储引擎InnoDB使用重做日志保证一致性与持久性，回滚日志保证原子性，使用各种锁来保证隔离性。
+> redo log用来保证事务的原子性和持久性（redo+binlog两阶段提交具有crash-safe能力，保证持久性），undo log保证事务的一致性，
 
 ### 实现原子性
 

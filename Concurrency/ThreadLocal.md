@@ -1,12 +1,12 @@
 # ThreadLocal
 
-
+[TOC]
 
 ThreadLocal可以理解为TreadLocalMap的封装，ThreadLocal中存了ThreadLocalMap
 
 > 和HashMap的不同点：
 >
-> hash计算方式不同，另外ThreadLocalMap解决冲突的方法是开放地址法。
+> hash计算方式不同，另外ThreadLocalMap解决冲突的方法是**开放地址法**。
 
 
 其中key是ThreadLocal对象引用，value是当前线程存储值
@@ -79,6 +79,8 @@ Key使用弱引用：引用的ThreadLocal的对象被回收了，ThreadLocal的�
 
 ## 内存泄漏问题
 
+> 不再会被使用的对象或者变量占用的内存不能被回收，就是内存泄露。
+
 首先来说，如果把ThreadLocal置为null，那么意味着Heap中的ThreadLocal实例不在有强引用指向，只有弱引用存在，因此GC是可以回收这部分空间的，也就是key是可以回收的。但是**value却存在一条从Current Thread过来的强引用链**。因此只有当**Current Thread销毁时，value才能得到释放**
 
 因此，只要这个线程对象被gc回收，就不会出现内存泄露，**但在threadLocal设为null和线程结束这段时间内不会被回收的**，比如key为null时，就没有办法访问这些key为null的Entry的value，如果当前线程再迟迟不结束的话，这些key为null的Entry的value就会一直存在一条强引用链：Thread Ref -> Thread -> ThreaLocalMap -> Entry -> value永远无法回收，造成内存泄漏。
@@ -94,4 +96,67 @@ Key使用弱引用：引用的ThreadLocal的对象被回收了，ThreadLocal的�
 
 
 
+
+## remove
+
+~~~java
+private void remove(ThreadLocal<?> key) {
+    // 使用hash方式，计算当前ThreadLocal变量所在table数组位置
+    Entry[] tab = table;
+    int len = tab.length;
+    int i = key.threadLocalHashCode & (len-1);
+    // 再次循环判断是否在为ThreadLocal变量所在table数组位置
+    for (Entry e = tab[i];
+         e != null;
+         e = tab[i = nextIndex(i, len)]) {
+        if (e.get() == key) {
+            // 调用WeakReference的clear方法清除对ThreadLocal的弱引用
+            // 将entry的对threadlocal的引用赋值为null
+            e.clear();
+            // 清理key为null的元素
+            // 将 entry的value赋值为null
+            expungeStaleEntry(i);
+            return;
+        }
+    }
+}
+~~~
+
+
+
+~~~java
+private int expungeStaleEntry(int staleSlot) {
+    Entry[] tab = table;
+    int len = tab.length;
+
+    // 根据强引用的取消强引用关联规则，将value显式地设置成null，去除引用
+    tab[staleSlot].value = null;
+    tab[staleSlot] = null;
+    size--;
+
+    // 重新hash，并对table中key为null进行处理
+    Entry e;
+    int i;
+    for (i = nextIndex(staleSlot, len);
+         (e = tab[i]) != null;
+         i = nextIndex(i, len)) {
+        ThreadLocal<?> k = e.get();
+        // 对table中key为null进行处理,将value设置为null，清除value的引用
+        if (k == null) {
+            e.value = null;
+            tab[i] = null;
+            size--;
+        } else {
+            int h = k.threadLocalHashCode & (len - 1);
+            if (h != i) {
+                tab[i] = null;
+                while (tab[h] != null)
+                    h = nextIndex(h, len);
+                tab[h] = e;
+            }
+        }
+    }
+    return i;
+}
+~~~
 
