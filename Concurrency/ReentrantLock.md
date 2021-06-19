@@ -20,7 +20,9 @@ java.util.concurrent包下提供的一套互斥锁，相比Synchronized，Reentr
 
 
 
-## 区别
+## 区别synchronized
+
+![img](images/412d294ff5535bbcddc0d979b2a339e6102264.png)
 
 **和synchronized区别：**
 
