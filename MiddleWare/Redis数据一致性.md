@@ -83,3 +83,23 @@ public void write(String key,Object data){
 
 
 
+
+
+## 延迟双删策略
+
+![img](images/e9ffc29b44cc93e241aee35b077bc0c9.png)
+
+**删除缓存->更新缓存->延时(几百ms)(可异步，如MQ解决)再次删除缓存**
+
+
+
+当有 一大堆并发写 过来时，此时可以直接操作缓存，定期写入SQL（适合高并发）
+
+![img](images/119a03bf70d0129245b3fe7fae14f146.png)
+
+以Redis数据为主，MySQL数据为辅助。定期插入(好像数据备份库一样)。
+
+
+
+
+

@@ -10,6 +10,12 @@ java.util.concurrent包下提供的一套互斥锁，相比Synchronized，Reentr
 
 
 
+## 什么是可重入锁
+
+可重入就是说某个线程已经获得某个锁，可以再次获取锁而不会出现死锁。
+
+
+
 ## 底层实现
 
  ReenTrantLock的实现是一种**自旋锁**，通过循环调用CAS操作来实现加锁。

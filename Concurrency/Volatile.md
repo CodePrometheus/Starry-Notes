@@ -92,3 +92,15 @@ public void run() {
 
 
 
+## 有序性原理
+
+volatile有序性的保证就是通过禁止指令重排序来实现的。指令重排序包括编译器和处理器重排序，JMM会分别限制这两种指令重排序。
+
+那么禁止指令重排序又是如何实现的呢？答案是加内存屏障。JMM为volatile加内存屏障有以下4种情况：
+
+在每个volatile写操作的前面插入一个StoreStore屏障，防止写volatile与后面的写操作重排序。
+在每个volatile写操作的后面插入一个StoreLoad屏障，防止写volatile与后面的读操作重排序。
+在每个volatile读操作的后面插入一个LoadLoad屏障，防止读volatile与后面的读操作重排序。
+在每个volatile读操作的后面插入一个LoadStore屏障，防止读volatile与后面的写操作重排序。
+上述内存屏障的插入策略是非常保守的，比如一个volatile的写操作后面需要加上StoreStore和StoreLoad屏障，但这个写volatile后面可能并没有读操作，因此理论上只加上StoreStore屏障就可以，的确，有的处理器就是这么做的。但JMM这种保守的内存屏障插入策略能够保证在任意的处理器平台，volatile变量都是有序的。
+
