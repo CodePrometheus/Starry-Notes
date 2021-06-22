@@ -80,6 +80,8 @@
 - [CopyOnWriteArrayList](KeyPoints/CopyOnWriteArrayList.md)
 
 - [LinkedList](KeyPoints/LinkedList.md)
+  
+- [HashSet](KeyPoints/HashSet.md)
 
   
 
