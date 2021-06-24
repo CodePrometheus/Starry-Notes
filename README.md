@@ -122,6 +122,10 @@
 - [Java NIO](RPC/JavaNIO.md)
   
 - [Reactor模式](RPC/Reactor模式.md)
+  
+- [SPI](RPC/SPI.md)
+  
+- [Websocket](RPC/Websocket.md)
 
 
 
