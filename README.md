@@ -288,5 +288,8 @@
 
 ## Go
 
+-[channel](Go/channel.md)
+
+-[goroutine](Go/goroutine.md)
 
 
