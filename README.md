@@ -112,6 +112,8 @@
 - [Redis架构](MiddleWare/Redis架构.md)
   
 - [Nginx](MiddleWare/Nginx.md)
+  
+- [熔断限流](MiddleWare/熔断限流.md)
 
 
 
