@@ -35,6 +35,7 @@
 
 - [位运算](JavaBase/位运算.md)
 
+- [Stream](JavaBase/Stream.md)
 
 
 ## SpringAllBase
@@ -313,6 +314,7 @@
 
 ## 机器学习
 
+- [神经网络基本概念](MachineLearning/神经网络基本概念.md)
 
 
 
