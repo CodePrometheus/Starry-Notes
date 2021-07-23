@@ -228,3 +228,10 @@ protected Object doInvoke(Object... args) throws Exception {
 }
 ~~~
 
+
+
+
+
+
+
+## SpringMVC前台发送一个请求到后端的处理过程
