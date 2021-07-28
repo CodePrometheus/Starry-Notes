@@ -316,6 +316,10 @@
 ## 机器学习
 
 - [神经网络基本概念](MachineLearning/神经网络基本概念.md)
+  
+- [分类和回归](MachineLearning/分类和回归.md)
+  
+- [损失函数](MachineLearning/损失函数.md)
 
 
 
