@@ -321,6 +321,10 @@
   
 - [损失函数](MachineLearning/损失函数.md)
 
+- [卷积神经网络](MachineLearning/卷积神经网络.md)
+
+- [计算机视觉基础](MachineLearning/计算机视觉基础.md)
+
 
 
 
