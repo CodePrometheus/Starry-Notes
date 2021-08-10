@@ -117,6 +117,8 @@
 - [熔断限流](MiddleWare/熔断限流.md)
 
 - [分布式事务](MiddleWare/分布式事务.md)
+- 
+- [Canal](MiddleWare/Canal.md)
 
 
 ## RPC
