@@ -120,6 +120,8 @@
 
 - [Canal](MiddleWare/Canal.md)
 
+- [ElasticSearch](MiddleWare/ElasticSearch.md)
+
 
 ## RPC
 
