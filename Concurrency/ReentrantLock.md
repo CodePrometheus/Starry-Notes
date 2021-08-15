@@ -12,7 +12,7 @@ java.util.concurrent包下提供的一套互斥锁，相比Synchronized，Reentr
 
 ## 什么是可重入锁
 
-可重入就是说某个线程已经获得某个锁，可以再次获取锁而不会出现死锁。
+可重入就是说某个线程已经获得某个锁，**可以再次获取锁而不会出现死锁。**
 
 
 
@@ -34,7 +34,7 @@ java.util.concurrent包下提供的一套互斥锁，相比Synchronized，Reentr
 
  1、**底层实现**：synchronized 是**JVM**层面的锁，是**Java关键字**，通过monitor对象来完成（monitorenter与monitorexit），ReentrantLock 是从jdk1.5以来（java.util.concurrent.locks.Lock）提供的**API层面**的锁。
 
- 2、**实现原理****：synchronized 的实现涉及到**锁的升级**，具体为无锁、偏向锁、自旋锁、向OS申请重量级锁；ReentrantLock实现则是通过利用**CAS**（CompareAndSwap）自旋机制保证线程操作的原子性和volatile保证数据可见性以实现锁的功能。
+ 2、**实现原理**：synchronized 的实现涉及到**锁的升级**，具体为无锁、偏向锁、自旋锁、向OS申请重量级锁；ReentrantLock实现则是通过利用**CAS**（CompareAndSwap）自旋机制保证线程操作的原子性和volatile保证数据可见性以实现锁的功能。
 
  3、**是否可手动释放：synchronized 不需要用户去手动释放锁，synchronized 代码执行完后系统会自动让线程释放对锁的占用； ReentrantLock则需要用户去手动释放锁，如果没有手动释放锁，就可能导致死锁现象**。
 
