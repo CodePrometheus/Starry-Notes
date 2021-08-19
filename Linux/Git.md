@@ -1,6 +1,4 @@
-# 
-
-Git
+# Git
 
 遇到一个小问题，记录一下解决的一个办法
 
@@ -28,8 +26,31 @@ git filter-branch --force --prune-empty --index-filter 'git rm -rf --cached --ig
 
 
 
+## 踩坑
 
+> 可能上面的不适用于某些场景，或者直接失败
 
-![image-20210818233304757](images/image-20210818233304757.png)
+如何删除Github上提交的历史包括文件本身
 
-![image-20210818233319588](images/image-20210818233319588.png)
+主要参考[从仓库中删除敏感数据 - GitHub Docs](https://docs.github.com/cn/github/authenticating-to-github/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository#using-the-bfg)
+
+下面介绍使用 BFG
+
+~~~shell
+java -jar .\bfg-1.14.0.jar -D eg.txt  eg.git --no-blob-protection
+cd eg.git
+git reflog expire --expire=now --all && git gc --prune=now --aggressive // 执行不了就分两步
+git push
+~~~
+
+比起
+
+~~~shell
+git filter-branch --force --index-filter \
+  "git rm --cached --ignore-unmatch PATH-TO-YOUR-FILE-WITH-SENSITIVE-DATA" \
+  --prune-empty --tag-name-filter cat -- --all
+~~~
+
+要轻松许多了
+
+实测bfg可以满足需求
