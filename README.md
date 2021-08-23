@@ -31,6 +31,8 @@
   
 - [I/O](JavaBase/IO.md)
 
+- [Serialization及Transient](JavaBase/Serialization及Transient.md)
+
 ### 拓展
 
 - [位运算](JavaBase/位运算.md)
@@ -255,7 +257,7 @@
 
 - [类加载器](JVM/类加载器.md)
 
-- [内存模型](JVM/内存模型.md)
+- [JMM](JVM/JMM.md)
 
 - [重排序与happens-before](JVM/重排序与happens-before.md)
   

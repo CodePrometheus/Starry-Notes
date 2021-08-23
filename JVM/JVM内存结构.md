@@ -139,11 +139,17 @@ CPU占用过高
 
 ### 结构
 
+![image-20210823171045905](images/image-20210823171045905.png)
+
+
+
+![在这里插入图片描述](images/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2plcnJ5MTExMTI=,size_16,color_FFFFFF,t_70.png)
+
 ![img](images/20200608150547.png)
 
 
 
-### 为什么要将永久代替换为原空间
+### 为什么要将永久代替换为元空间
 
 因为永久代设置空间大小是很难确定的，空间小容易FullGC和OOM，分配大了就会浪费，而元空间是用本地空间
 

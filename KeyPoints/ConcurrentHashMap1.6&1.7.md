@@ -4,7 +4,7 @@
 
 ## 图解
 
-首先要了解Segment（段），Segment本身就相当于一个HashMap对象，同HashMap一样，Segment包含一个HashEntry数组，数组中每一个HashEntry既是一个键值对，也是一个链表的头节点
+首先要了解Segment（段），Segment本身就相当于一个HashMap对象，同HashMap一样，Segment包含一个HashEntry数组，数组中每一个HashEntry既是一个键值对，也是一个链表的头节点，注意 **Segment<K,V> extends ReentrantLock**
 
 ![img](images/v2-16e5f4cd5259e2219613b2d75e817929_720w.jpg)
 

@@ -74,6 +74,8 @@ stream.forEach(str -> System.out.println(str));
 Stream<String> stream= Stream.of("I", "love", "you", "too");
 stream.filter(str -> str.length()==3)
     .forEach(str -> System.out.println(str));
+// q
+List<String> intersection = list1.stream().filter(item -> list2.contains(item)).collect(toList());
 ```
 
 上述代码将输出为长度等于3的字符串`you`和`too`。注意，由于`filter()`是个中间操作，如果只调用`filter()`不会有实际计算，因此也不会输出任何信息。

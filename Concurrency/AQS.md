@@ -15,17 +15,21 @@ AbstractQueuedSynchronizer，抽象的队列式的同步器，是来构建锁和
 ---
 
 AQS最核心的三大部分：
-     **state** (The synchronization state)     private volatile int state;
+     **state**    private volatile int state;
 
-​     **控制线程抢锁和配合的FIFO队列**（先进先出）
+​     **控制线程抢锁和配合的虚拟FIFO队列** CLH
 
-​     **期望协作工具类去实现的获取/释放等重要方法**
+​     **子类具体实现的获取/释放等重要方法**
 
 ---
 
  AQS核心思想是，如果被请求的共享资源空闲，则将当前请求资源的线程设置为**有效的工作线程**，并且将共享资源设置为**锁定状态**。
 
-如果被请求的共享资源被占用，那么就需要一套线程阻塞等待以及被唤醒时锁分配的机制，这个机制AQS是由**CLH（虚拟的双向队列）**队列锁实现的，即将暂时获取不到锁的线程加到队列中。
+如果被请求的共享资源被占用，那么就需要一套线程阻塞等待以及被唤醒时锁分配的机制，这个机制AQS是由**CLH（虚拟的双向队列）**队列锁实现的，**即将暂时获取不到锁的线程加到队列中**。
+
+
+
+![AQS基本设计](images/16daaccc57d3ab77tplv-t2oaga2asx-watermark.awebp)
 
 
 
@@ -33,10 +37,10 @@ AQS最核心的三大部分：
 
 ## 核心
 
-1. 使用volatile修饰的state变量表示共享资源的状态。如果被请求的共享资源空闲，则将当前请求资源的线程设置为有效的工作线程，并且将共享资源设置为锁定状态。
+1. **使用volatile修饰的state变量表示共享资源的状态**。如果被请求的共享资源空闲，则将当前请求资源的线程设置为有效的工作线程，并且将共享资源设置为锁定状态。
 2. 如果被请求的共享资源被占用，那么就需要一套线程阻塞等待以及被唤醒时锁分配的机制，这个机制 AQS 是用 CLH 队列锁实现的，即将暂时获取不到锁的线程加入到队列中。
-3. CLH(Craig,Landin,and Hagersten)队列是一个虚拟的双向队列（虚拟的双向队列即不存在队列实例，仅存在结点之间的关联关系）
-4. 通过自旋+CAS获取共享资源，如果获取失败则调用调用native方法 进入park 状态
+3. CLH(Craig,Landin,and Hagersten)队列是一个虚拟的双向队列（虚拟的双向队列即不存在队列实例，**仅存在结点之间的关联关系**）
+4. 通过**自旋+CAS获取共享资源**，如果获取失败则调用调用native方法 进入park 状态
 
 ![img](images/82077ccf14127a87b77cefd1ccf562d3253591.png)
 
@@ -54,9 +58,13 @@ AQS最核心的三大部分：
 
 
 
-## state
+## State
 
-state -> 具体含义会根据实现类的不同而不同，比如在Semaphore表示**剩余的许可证的数量**、在CountDownLatch表**示还需要倒数的数量**
+state -> 具体含义会根据实现类的不同而不同，不一定代表资源
+
+比如在Semaphore表示**剩余的许可证的数量**、
+
+在CountDownLatch表示state变量值代表还需释放的latch计数(可以理解为需要打开的门闩数)，需要每个门闩都打开，门才能打开，所有等待线程才会开始执行，每次countDown()就会对state变量减1，如果state变量减为0，则唤醒CLH队列中的休眠线程
 
  被volatile修饰，会被并发地修改，所以所有修改state的方法都需要**保证线程安全**(依赖于juc下的atomic包的支持CAS)
 
@@ -64,9 +72,173 @@ state -> 具体含义会根据实现类的不同而不同，比如在Semaphore�
 
 
 
-## FIFO队列
 
-每个Node结点维护一个prev引用和next引用，分别指向自己的前驱和后继结点。AQS维护两个指针，分别指向队列头部head和尾部tail。
+
+
+
+## Condition接口
+
+Condition接口定义了await()、awaitNanos(long)、signal()、signalAll()等方法，配合对象锁实例实现等待/通知功能，原理是基于AQS内部类ConditionObject实现Condition接口，线程await后阻塞并进入CLH队列，等待其他线程调用signal方法后被唤醒
+
+
+
+
+
+## Node
+
+~~~java
+static final class Node {
+    // AQS定义两种资源共享方式，一种是共享，多个线程可同时执行，如Semaphore/CountDownLatch；
+    // 另一种是 独占EXCLUSIVE，只有一个线程能执行，如ReentrantLock
+    /** Marker to indicate a node is waiting in shared mode */
+    static final Node SHARED = new Node();
+    /** Marker to indicate a node is waiting in exclusive mode */
+    static final Node EXCLUSIVE = null;
+
+    /** waitStatus value to indicate thread has cancelled */
+    // 表示当前节点已取消调度。当timeout或被中断（响应中断的情况下），会触发变更为此状态，进入该状态后的节点将不会再变化
+    static final int CANCELLED =  1;
+    /** waitStatus value to indicate successor's thread needs unparking */
+    // 表示后继节点在等待当前节点唤醒。后继节点入队后进入休眠状态之前，会将前驱节点的状态更新为SIGNAL
+    static final int SIGNAL    = -1;
+    /** waitStatus value to indicate thread is waiting on condition */
+    // 表示节点等待在Condition上，当其他线程调用了Condition的signal()方法后，CONDITION状态的节点将从等待队列转移到同步队列中，等待获取同步锁
+    static final int CONDITION = -2;
+    /**
+         * waitStatus value to indicate the next acquireShared should
+         * unconditionally propagate
+         */
+    // 共享模式下，前驱节点不仅会唤醒其后继节点，同时也可能会唤醒后继的后继节点
+    static final int PROPAGATE = -3;
+
+    /** CLH中每一个节点的状态(waitStatus)
+         * Status field, taking on only the values:
+         *   SIGNAL:     The successor of this node is (or will soon be)
+         *               blocked (via park), so the current node must
+         *               unpark its successor when it releases or
+         *               cancels. To avoid races, acquire methods must
+         *               first indicate they need a signal,
+         *               then retry the atomic acquire, and then,
+         *               on failure, block.
+         *   CANCELLED:  This node is cancelled due to timeout or interrupt.
+         *               Nodes never leave this state. In particular,
+         *               a thread with cancelled node never again blocks.
+         *   CONDITION:  This node is currently on a condition queue.
+         *               It will not be used as a sync queue node
+         *               until transferred, at which time the status
+         *               will be set to 0. (Use of this value here has
+         *               nothing to do with the other uses of the
+         *               field, but simplifies mechanics.)
+         *   PROPAGATE:  A releaseShared should be propagated to other
+         *               nodes. This is set (for head node only) in
+         *               doReleaseShared to ensure propagation
+         *               continues, even if other operations have
+         *               since intervened.
+         *   0:  // 节点入队时的默认状态        None of the above 
+         *
+         * The values are arranged numerically to simplify use.
+         * Non-negative values mean that a node doesn't need to
+         * signal. So, most code doesn't need to check for particular
+         * values, just for sign.
+         *
+         * The field is initialized to 0 for normal sync nodes, and
+         * CONDITION for condition nodes.  It is modified using CAS
+         * (or when possible, unconditional volatile writes).
+         */
+    volatile int waitStatus;
+
+    /**
+         * Link to predecessor node that current node/thread relies on
+         * for checking waitStatus. Assigned during enqueuing, and nulled
+         * out (for sake of GC) only upon dequeuing.  Also, upon
+         * cancellation of a predecessor, we short-circuit while
+         * finding a non-cancelled one, which will always exist
+         * because the head node is never cancelled: A node becomes
+         * head only as a result of successful acquire. A
+         * cancelled thread never succeeds in acquiring, and a thread only
+         * cancels itself, not any other node.
+         */
+    volatile Node prev;
+
+    /**
+         * Link to the successor node that the current node/thread
+         * unparks upon release. Assigned during enqueuing, adjusted
+         * when bypassing cancelled predecessors, and nulled out (for
+         * sake of GC) when dequeued.  The enq operation does not
+         * assign next field of a predecessor until after attachment,
+         * so seeing a null next field does not necessarily mean that
+         * node is at end of queue. However, if a next field appears
+         * to be null, we can scan prev's from the tail to
+         * double-check.  The next field of cancelled nodes is set to
+         * point to the node itself instead of null, to make life
+         * easier for isOnSyncQueue.
+         */
+    volatile Node next;
+
+    /**
+         * The thread that enqueued this node.  Initialized on
+         * construction and nulled out after use.
+         */
+    volatile Thread thread;
+
+    /**
+         * Link to next node waiting on condition, or the special
+         * value SHARED.  Because condition queues are accessed only
+         * when holding in exclusive mode, we just need a simple
+         * linked queue to hold nodes while they are waiting on
+         * conditions. They are then transferred to the queue to
+         * re-acquire. And because conditions can only be exclusive,
+         * we save a field by using special value to indicate shared
+         * mode.
+         */
+    Node nextWaiter;
+
+    /**
+         * Returns true if node is waiting in shared mode.
+         */
+    final boolean isShared() {
+        return nextWaiter == SHARED;
+    }
+
+    /**
+         * Returns previous node, or throws NullPointerException if null.
+         * Use when predecessor cannot be null.  The null check could
+         * be elided, but is present to help the VM.
+         *
+         * @return the predecessor of this node
+         */
+    final Node predecessor() throws NullPointerException {
+        Node p = prev;
+        if (p == null)
+            throw new NullPointerException();
+        else
+            return p;
+    }
+
+    Node() {    // Used to establish initial head or SHARED marker
+    }
+
+    Node(Thread thread, Node mode) {     // Used by addWaiter
+        this.nextWaiter = mode;
+        this.thread = thread;
+    }
+
+    Node(Thread thread, int waitStatus) { // Used by Condition
+        this.waitStatus = waitStatus;
+        this.thread = thread;
+    }
+}
+~~~
+
+
+
+
+
+## CLH队列
+
+双向FIFO的CLH队列，AQS依赖它来管理等待中的线程，如果线程获取同步竞争资源失败时，会将线程阻塞，并加入到CLH同步队列；当竞争资源空闲时，基于CLH队列阻塞线程并分配资源
+
+每个Node结点维护一个**prev引用和next引用**，分别指向自己的前驱和后继结点。AQS维护两个指针，分别**指向队列头部head和尾部tail**。
 
 当线程获取资源失败（比如tryAcquire时试图设置state状态失败），会被构造成一个结点加入CLH队列中，同时当前线程会被阻塞在队列中（通过LockSupport.park实现，其实是等待态）。当持有同步状态的线程释放同步状态时，会唤醒后继结点，然后此结点线程继续加入到对同步状态的争夺中。
 

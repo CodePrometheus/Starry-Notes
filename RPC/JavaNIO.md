@@ -80,7 +80,7 @@ Channel由java.nio.channels 包定义的。Channel 表示**IO 源与目标打开
 
 ![img](https://nyimapicture.oss-cn-beijing.aliyuncs.com/img/20201109153039.png)
 
-后来，**DMA**(Direct Memory Access，直接存储器访问)出现了。当IO请求传到计算机底层时，**DMA会向CPU请求，让DMA去处理这些IO操作**，从而可以让CPU去执行其他指令。DMA处理IO操作时，会请求获取总线的使用权。**当IO请求过多时，会导致大量总线用于处理IO请求，从而降低效率**
+后来，**DMA**(Direct Memory Access，直接内存存取，是一种允许外围设备（硬件子系统）直接访问系统主内存的机制。基于 DMA 访问方式，系统主内存与硬件设备的数据传输可以省去CPU 的全程调度)出现了。当IO请求传到计算机底层时，**DMA会向CPU请求，让DMA去处理这些IO操作**，从而可以让CPU去执行其他指令。DMA处理IO操作时，会请求获取总线的使用权。**当IO请求过多时，会导致大量总线用于处理IO请求，从而降低效率**
 
 ![img](images/20201109153439.png)
 
@@ -716,9 +716,15 @@ DirectByteBuffer(int cap) {                   // package-private
 
 > 用于检查一个或多个NIO Channel（通道）的状态是否处于可读、可写。如此可以实现单线程管理多个channels,也就是可以管理多个网络链接。
 >
-> **使用Selector的好处在于：** 使用更少的线程来就可以来处理通道了， 相比使用多个线程，避免了线程上下文切换带来的开销。
+> **使用Selector的好处在于：** 使用更少的线程来就可以来处理通道了， 相比使用多个线程，避免了线程上下文切换带来的开销。基于操作系统提供的I/O复用功能，单个线程可以同时监视多个连接描述符，一旦某个连接就绪（一般是写就绪或读就绪），能够通知程序进行相应的读写操作，常见有select、poll、epoll等不同实现
 
 ![Selector（选择器）](images/16363f5338f36c54)
+
+![img](images/16e64a04d9bf41d2tplv-t2oaga2asx-watermark.awebp)
+
+
+
+![img](images/16e64a04f69f54f8tplv-t2oaga2asx-watermark.awebp)
 
 选择器的使命就是完成IO的多路复用，一个通道代表一条连接通路，通过选择器可以同时监控多个通道的IO（输入输出）状况，**选择器和通道的关系，是监控和被监控的关系。**
 

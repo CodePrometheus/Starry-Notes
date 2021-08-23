@@ -48,7 +48,7 @@ java.util.concurrent包下提供的一套互斥锁，相比Synchronized，Reentr
 
 ## 公平锁
 
-公平锁自然是遵循**FIFO**（先进先出）原则的，先到的线程会优先获取资源，后到的会进行排队等待
+公平锁自然是遵循**FIFO**（先进先出）原则的，先到的线程会优先获取资源，后到的会进行排队等待，**公平锁直接基于AQS的acquire(int)获取资源**
 
  **优点：**所有的线程都能得到资源，不会饿死在队列中。适合大任务
 
@@ -64,15 +64,64 @@ java.util.concurrent包下提供的一套互斥锁，相比Synchronized，Reentr
 
 
 
+
+
 ## 非公平锁
 
 多个线程去获取锁的时候，会直接去尝试获取，获取不到，再去进入等待队列，如果能获取到，就直接获取到锁。
+
+**非公平锁先尝试插队**：基于CAS，期望state同步变量值为0(没有任何线程持有锁)，更新为1，如果全部CAS更新失败再进行排队
+
+
 
  **优点：**可以减少CPU唤醒线程的开销，整体的吞吐效率会高点，CPU也不必取唤醒所有线程，会减少唤起线程的数量。
 
  **缺点：** 这样可能导致队列中间的线程一直获取不到锁或者长时间获取不到锁
 
 
+
+~~~java
+// 公平锁实现
+final void lock() {
+    acquire(1);
+}
+
+// 非公平锁实现 非公平锁在lock中cas失败后，在nonfairTryAcauire中可能还会还会cas一次，成功后就不用进入等待队列了
+final void lock() {
+    // 第1次CAS
+    // state值为0代表没有任何线程持有锁，直接插队获得锁
+    if (compareAndSetState(0, 1))
+        setExclusiveOwnerThread(Thread.currentThread());
+    else
+        acquire(1);
+}
+
+protected final boolean tryAcquire(int acquires) {
+    return nonfairTryAcquire(acquires);
+}
+
+// 在nonfairTryAcquire方法中再次CAS尝试获取锁
+final boolean nonfairTryAcquire(int acquires) {
+    final Thread current = Thread.currentThread();
+    int c = getState();
+    if (c == 0) {
+        // 第2次CAS尝试获取锁
+        if (compareAndSetState(0, acquires)) {
+            setExclusiveOwnerThread(current);
+            return true;
+        }
+    }
+    // 已经获得锁
+    else if (current == getExclusiveOwnerThread()) {
+        int nextc = c + acquires;
+        if (nextc < 0) // overflow
+            throw new Error("Maximum lock count exceeded");
+        setState(nextc);
+        return true;
+    }
+    return false;
+}
+~~~
 
 
 
