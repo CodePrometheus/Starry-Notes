@@ -60,7 +60,7 @@
 
 ## Java重难点
 
-- [一致性哈希](KeyPoints/ConsistentHashing.md)
+- [一致性哈希](KeyPoints/一致性哈希.md)
 
 - [布隆过滤器](KeyPoints/布隆过滤器.md)
 
@@ -168,6 +168,8 @@
 - [地址](OperatingSystem/地址.md)
 
 - [共享内存](OperatingSystem/共享内存.md)
+
+- [临界区](OperatingSystem/临界区.md)
 
 
 
