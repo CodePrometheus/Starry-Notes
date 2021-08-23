@@ -134,4 +134,4 @@ invokeBeanFactoryPostProcessors(beanFactory);  -> BeanFactoryProcessor
 finishBeanFactoryInitialization(beanFactory);  -> InstantiationAwareBeanPostProcessor、BeanPostProcessor
 ~~~
 
-![img](images/68747470733a2f2f67697465652e636f6d2f7761726473657074656d6265722f696d616765732f7261772f6d61737465722f696d67732f586e6970323032312d30312d32325f31382d33342d34312e6a7067)
+![image-20210823105500827](images/image-20210823105500827.png)
