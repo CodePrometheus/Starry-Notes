@@ -235,7 +235,7 @@ keepAliveTime的计量单位
 
 ①CallerRunsPolicy
 
-该策略下，在调用者线程中直接执行被拒绝任务的run方法，除非线程池已经shutdown，则直接抛弃任务。
+该策略下，在调用者线程中**直接执行被拒绝任务的run方法**，除非线程池已经shutdown，则直接抛弃任务。
 
 ②AbortPolicy
 

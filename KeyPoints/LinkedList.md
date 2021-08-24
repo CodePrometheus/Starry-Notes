@@ -46,6 +46,14 @@ private static class Node<E> {
 
 
 
+> 要想使用线程安全的队列，一般两种方式，一种是加锁即阻塞队列，一种是非阻塞即用循环CAS实现
+>
+> ConcurrentLinkedQueue是线程安全的，基于wait-free实现，单链表结构
+
+
+
+
+
 
 
 ## 源码分析

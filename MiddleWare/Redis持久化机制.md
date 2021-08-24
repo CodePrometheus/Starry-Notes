@@ -18,9 +18,9 @@ RDB持久化就是把**当前进程数据生成快照保存到硬盘里**的过�
 
 分别对应 save 和 bgsave 
 
-- save 阻塞当前的Redis服务器，直到RDB过程完成为止，线上不建议使用
+- save **阻塞当前的Redis服务器**，直到RDB过程完成为止，线上不建议使用
 
-- bgsave Redis进程执行 fork 操作创建子线程，RDB持久化过程由子进程负责，完成后自动结束，阻塞只发生 fork 阶段，一般时间很短
+- bgsave Redis进程执行 fork 操作创建子线程，RDB持久化过程由子进程负责，完成后自动结束，阻塞只发生 fork 阶段，一般时间很短，redis默认配置
 
 Redis默认采用的是LZF 算法对生成的RDB文件做压缩处理
 
@@ -73,7 +73,11 @@ RDB方式没有办法做到实时持久化/秒级持久化，fork创建子线程
 
  AOF持久化(即Append Only File持久化)，则是将**服务器执行的命令保存到AOF文件中**。通过fsync异步将命令写到日志，当重启Redis会重新将持久化的日志中文件恢复数据。
 
-AOF重写，指的是对命令进行压缩，将RPUSH、LPOP的类似命令进行压缩，减少AOF文件大小
+AOF重写，指的是**对命令进行压缩**，将RPUSH、LPOP的类似命令进行压缩，减少AOF文件大小
+
+每次AOF重写，都会执行一个内存拷贝，**将内存中的数据拷贝用于重写**，然后两个日志文件重写的过程中，**新写入的数据不丢失**，而且，因为Redis使用另外的线程来进行数据重写，所以这个过程**不会阻塞主线程**。
+
+![img](images/1559038-20210807154013462-280303705.png)
 
 ![img](images/1075473-20180726171841786-525684493.png)
 
@@ -99,6 +103,18 @@ AOF重写，指的是对命令进行压缩，将RPUSH、LPOP的类似命令进�
 
 ---
 
+![](https://p1-tt.byteimg.com/origin/pgc-image/9ba2fe8565c24efd894e17d0aaabba0d?from=pc)
+
+
+
+|                  配置                  |                             含义                             |
+| :------------------------------------: | :----------------------------------------------------------: |
+| innodb_flush_log_at_trx_commit=1(默认) |          每次事务提交的时候都调用fsync来写入到磁盘           |
+| innodb_flush_log_at_trx_commit=0(默认) | 事务commit的时候，不写入redo log file，而是通过master线程每秒操作一次，从redo log buffer写入到redo log file中 |
+| innodb_flush_log_at_trx_commit=2(默认) | 事务提交时将redo log buffer刷入redo log file，也即刷入系统文件缓存中，不进行fsync操作，由系统来进行fsync操作 |
+
+**AOF 机制下数据是否实时写入磁盘，这个和 MySQL 的 redo log 机制很类似，也是需要通过参数来进行控制。**
+
 
 
 - 持久化的三个过程：命令追加、文件写入、文件同步
@@ -117,7 +133,7 @@ AOF重写，指的是对命令进行压缩，将RPUSH、LPOP的类似命令进�
 
  **优点：**
 
- 1）数据安全，aof 持久化可以配置 appendfsync 属性，有 always，每进行一次 命令操作就记录到 aof 文件中一次。
+ 1）**数据安全**，aof 持久化可以配置 appendfsync 属性，有 always，每**进行一次 命令操作就记录到 aof 文件中一次，可以将数据更加及时的同步到文件中**
 
  2）通过 append 模式写文件，即使中途服务器宕机，可以通过 redis-check-aof 工具解决数据一致性问题。
 
@@ -127,6 +143,24 @@ AOF重写，指的是对命令进行压缩，将RPUSH、LPOP的类似命令进�
 
  2）数据集大的时候，比 rdb 启动效率低。
 
+
+
+
+
+## 不同点
+
+**AOF 和 RDB 最大的不同是：AOF 记录的是执行命令（类似于 MySQL 中 binlog 的 statement 格式 **
+
+**而RDB 记录的是数据（类似于 MySQL 中 binlog 的 row 格式）。**
+
+
+
+AOF记录的命令是先执行后，再写入AOF日志中，这恰好与MySQL的redo log日志**相反**
+
+**这么做的好处主要有两点：**
+
+- 先执行命令再写入AOF日志确保命令不存在语法错误能正常的被执行；
+- 不阻塞主线程；
 
 
 

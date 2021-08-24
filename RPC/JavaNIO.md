@@ -80,7 +80,9 @@ Channel由java.nio.channels 包定义的。Channel 表示**IO 源与目标打开
 
 ![img](https://nyimapicture.oss-cn-beijing.aliyuncs.com/img/20201109153039.png)
 
-后来，**DMA**(Direct Memory Access，直接内存存取，是一种允许外围设备（硬件子系统）直接访问系统主内存的机制。基于 DMA 访问方式，系统主内存与硬件设备的数据传输可以省去CPU 的全程调度)出现了。当IO请求传到计算机底层时，**DMA会向CPU请求，让DMA去处理这些IO操作**，从而可以让CPU去执行其他指令。DMA处理IO操作时，会请求获取总线的使用权。**当IO请求过多时，会导致大量总线用于处理IO请求，从而降低效率**
+后来，**DMA**(Direct Memory Access，直接内存存取，是一种允许外围设备（硬件子系统）直接访问系统主内存的机制。基于 DMA 访问方式，系统主内存与硬件设备的数据传输可以省去CPU 的全程调度)出现了。
+
+当IO请求传到计算机底层时，**DMA会向CPU请求，让DMA去处理这些IO操作**，从而可以让CPU去执行其他指令。DMA处理IO操作时，会请求获取总线的使用权。**当IO请求过多时，会导致大量总线用于处理IO请求，从而降低效率**
 
 ![img](images/20201109153439.png)
 
