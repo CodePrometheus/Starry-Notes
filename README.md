@@ -31,13 +31,15 @@
   
 - [I/O](JavaBase/IO.md)
 
-- [Serialization及Transient](JavaBase/Serialization及Transient.md)
-
 ### 拓展
 
 - [位运算](JavaBase/位运算.md)
 
 - [Stream](JavaBase/Stream.md)
+
+- [Serialization及Transient](JavaBase/Serialization及Transient.md)
+
+- [拷贝](JavaBase/拷贝.md)
 
 
 ## SpringAllBase
@@ -86,6 +88,9 @@
   
 - [HashSet](KeyPoints/HashSet.md)
 
+- [BitMap](KeyPoints/BitMap.md)
+
+- [FailFast](KeyPoints/FailFast.md)
   
 
 

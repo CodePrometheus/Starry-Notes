@@ -180,7 +180,7 @@ private transient volatile CounterCell[] counterCells;
 static class Node<K,V> implements Map.Entry<K,V> {
     final int hash;
     final K key;
-    volatile V val;
+    volatile V val; // get操作全程不需要加锁是因为Node的成员val是用volatile修饰的和数组用volatile修饰没有关系。数组用volatile修饰主要是保证在数组扩容的时候保证可见性。
     volatile Node<K,V> next;
 
     Node(int hash, K key, V val, Node<K,V> next) {
