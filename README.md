@@ -97,6 +97,8 @@
 
 ## 中间件
 
+- [CAP](MiddleWare/CAP.md)
+
 - [Zookeeper](MiddleWare/Zookeeper基础.md)
   
 - [Zookeeper应用场景及相应问题处理](MiddleWare/Zookeeper应用场景及相应问题处理.md)
@@ -131,9 +133,7 @@
 
 
 ## RPC
-
-- [RPC浅析](RPC/RPC浅析.md)
-  
+ 
 - [对不同IO模型理解](RPC/对不同IO模型理解.md)
   
 - [Java NIO](RPC/JavaNIO.md)
