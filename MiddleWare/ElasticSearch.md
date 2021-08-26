@@ -1,5 +1,7 @@
 # ElasticSearch
 
+[TOC]
+
 ![img](images/webp)
 
 | ID   | Name | Age  | Sex    |
@@ -32,7 +34,7 @@
 
 
 
-##### Posting List
+**Posting List**
 
 Elasticsearch分别为每个field都建立了一个倒排索引，Kate, John, 24, Female这些叫term，而[1,2]就是**Posting List**。Posting list就是一个int的数组，存储了所有符合某个term的文档id
 

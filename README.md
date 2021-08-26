@@ -123,7 +123,7 @@
   
 - [Nginx](MiddleWare/Nginx.md)
   
-- [熔断限流](MiddleWare/熔断限流.md)
+- [熔断限流降级](MiddleWare/熔断限流降级.md)
 
 - [分布式事务](MiddleWare/分布式事务.md)
 
