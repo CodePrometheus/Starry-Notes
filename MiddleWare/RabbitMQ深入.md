@@ -319,7 +319,9 @@ public boolean send(String queueName, String json, String msgId){
 
 **队列保证消息顺序性**
 
-可以采用标志位，类似于offset偏移位
+可以采用标志位，类似于offset偏移位；
+
+统一消费端，A消费完后，通过ack或者consummer-success通知B进行消费，但会降低吞吐量，需要通过更多的因此
 
 
 
