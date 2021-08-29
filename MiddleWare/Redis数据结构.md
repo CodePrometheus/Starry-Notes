@@ -12,22 +12,24 @@
 
 第一个层面，是从使用者的角度。比如：
 
-- string
-- list
-- hash
-- set
-- sorted set
+- **string**
+- **list**
+- **hash**
+- **set**
+- **sorted set**
 
-这一层面也是Redis暴露给外部的调用接口，称之为Redis数据类型。第二个层面，是Redis为了实现上述数据结构，引入的内部数据结构。比如：
+这一层面也是Redis暴露给外部的调用接口，称之为Redis数据类型。
+
+第二个层面，是Redis为了实现上述数据结构，引入的内部数据结构。比如：
 
 ![底层数据结构](images/data_structure.png)
 
-- dict
-- sds
-- ziplist
-- quicklist
-- skiplist
-- inset
+- **dict**
+- **sds**
+- **ziplist**
+- **quicklist**
+- **skiplist**
+- **intset**
 
 ![img](images/dataTyep2DataStructure.png)
 
@@ -64,7 +66,11 @@ ptr是指向具体内存数据结构的指针，由于Redis有多种数据类型
 
 ## string
 
-当string保存的是一个整数值，并可以用long型存储时，那么string对象会将整数值保存在ptr里面，将void*转换成long型，**编码为int**；当整数值太大无法用long型存储时，会将整数值转换成字符串，用SDS来存储，**编码为embstr或者raw**。
+> **sds**
+
+当string保存的是一个整数值，并可以用long型存储时，那么string对象会将整数值保存在ptr里面，将void转换成long型，**编码为int**；
+
+当整数值太大无法用long型存储时，会将整数值转换成字符串，用SDS来存储，**编码为embstr或者raw**。
 
 ![img](images/StringObject.png)
 
@@ -189,6 +195,8 @@ void sdsclear(sds s) {
 
 当然必要的时候也可以调用sdsRemoveFreeSpace，主动缩容。
 
+
+
 ### C字符串与SDS对比
 
 > 空间预分配，惰性空间释放
@@ -205,13 +213,18 @@ void sdsclear(sds s) {
 
 ## list
 
+> **ziplist和linkedlist(<3.2)   |   quicklist(>3,2)**
+
 注意版本，在版本3.2之前，列表底层的编码是**ziplist和linkedlist**实现的，但是在版本3.2之后，重新引入 quicklist，**列表的底层都由quicklist实现**
 
 3.2之前存储方式的优缺点：
 
 - 双向链表linkedlist便于在表的两端进行push和pop操作，在插入节点上复杂度很低，但是它的**内存开销比较大**。首先，它在每个节点上**除了要保存数据之外，还要额外保存两个指针**；其次，双向链表的各个节点是单独的内存块，**地址不连续**，节点多了**容易产生内存碎片**。
-
 - ziplist存储在一段连续的内存上，所以存储效率很高。但是，它**不利于修改操作，插入和删除操作需要频繁的申请和释放内存**。特别是当ziplist长度很长的时候，一次realloc可能会导致大批量的数据拷贝。
+
+
+
+
 
 ### quickList
 
@@ -312,6 +325,8 @@ linkedlist是标准的双向链表，Node节点包含prev和next指针，可以�
 
 ## hash
 
+> **ziplist   |   dict**
+
 当元素个数较少，并且每个元素较短时，hash对象底层通过**ziplist来存储**，field和value存储在两个相邻的entry中
 
 ![img](images/hashObjectZiplist.png)
@@ -371,9 +386,15 @@ Redis中的哈希表通过load_factor（负载因子）来决定是否扩容或�
 
 ### 渐进式rehash
 
-上面说到，哈希表在**扩容和缩容时都需要rehash**，由于Redis是单线程处理的，如果字典中的元素太多，一次性执行rehash操作会造成卡顿，因此Redis采用渐进式rehash的策略，在**查找、插入、删除操作时，对其进行迁移**。如果一直没有被访问，Redis会在**定时任务**中对其执行rehash。
+也就是避免一次性对所有的key进行重哈希，而是将rehash的操作**分散到对于dict的各个增删改查的操作中去。**
 
-Redis 采用 MurmurHash2 ，该算法效率高，随机性好，可以减少冲突可能，Redis的哈希表是采用了拉链法来解决冲突，在冲突的时候，会将元素加在表头，以加快速度
+哈希表在**扩容和缩容时都需要rehash**，由于Redis是单线程处理的，如果字典中的元素太多，一次性执行rehash操作会造成卡顿。
+
+因此Redis采用渐进式rehash的策略，在**查找、插入、删除操作时，对其进行迁移**。
+
+如果一直没有被访问，Redis会在**定时任务**中对其执行rehash。
+
+Redis 采用 MurmurHash2 ，该算法效率高，随机性好，可以减少冲突可能，Redis的哈希表是采用了**拉链法来解决冲突**，在冲突的时候，**会将元素加在表头，以加快速度**
 
 渐进式rehash每次将重哈希至少向前推进n步（除非不到n步整个重哈希就结束了），每一步都将ht[0]上某一个bucket（即一个dictEntry链表）上的每一个dictEntry移动到ht[1]上，它在ht[1]上的新位置根据ht[1]的sizemask进行重新计算。rehashidx记录了当前尚未迁移（有待迁移）的ht[0]的bucket位置。
 
@@ -393,30 +414,122 @@ Java里的rehash则不一样，是一次性迁移的，但是在Go里面，map�
 
 
 
+
+
+
+
 ## set
 
-当集合元素全为能用long声明的整数值，并且元素个素不大于512个（可通过参数set-max-intset-entries配置）时，集合数据通过intset来存储，intset中的元素按从小到大的顺序排列。其他情况下，集合数据一律使用dict（字典）来存储，字典的键为集合元素的value，字典的值为null。
+> **intset  | dict**
+
+当集合元素全为能用long声明的整数值，并且元素个素**不大于512个（可通过参数set-max-intset-entries配置）时，集合数据通过intset来存储**，intset中的元素按从小到大的顺序排列。
+
+~~~shell
+set-max-intset-entries 512
+~~~
+
+
+
+其他情况下，集合数据一律使用**dict（**字典）来存储
+
+字典的**键为集合元素的value，字典的值为null。**
 
 ![img](images/setObject.png)
+
+### intset
+
+由整数组成的有序集合，有序，就便于二分查找，快速判断一个元素是否属于这个集合
+
+~~~c
+typedef struct intset {
+    uint32_t encoding;
+    uint32_t length;
+    int8_t contents[]; // 总长度 = encoding * length
+} intset;
+~~~
+
+
+
+**intset与ziplist比较**
+
+- ziplist可以存储任意二进制串，而intset只能存储整数。
+- ziplist是无序的，而intset是从小到大有序的。因此，在ziplist上查找只能遍历，而在intset上可以进行二分查找，性能更高。
+- ziplist可以对每个数据项进行不同的变长编码（每个数据项前面都有数据长度字段`len`），而intset只能整体使用一个统一的编码（`encoding`）。
+
+
+
+
 
 
 
 ## zset
 
-默认情况下，当zset中的元素个数不大于128（通过参数zset-max-ziplist-entries控制），并且所有元素的长度都不大于64字节（通过参数zset-max-ziplist-value控制）时，zset底层采用ziplist来存储，相邻的两个entry分别表示value和score。如果两个条件有一个不满足，都采用hashtable+skiplist的形式存储，其中hashtable存储value和score的映射关系，skiplist按顺序存储value。
+> **ziplist   |   hashtable + skiplist**
+
+默认情况下，当zset中的**元素个数不大于128**（通过参数zset-max-ziplist-entries控制），并且所有元素的**长度都不大于64字节**（通过参数zset-max-ziplist-value控制）时，zset底层采用ziplist来存储，相邻的两个entry分别表示value和score。
+
+~~~shell
+zset-max-ziplist-entries 128
+zset-max-ziplist-value 64
+~~~
+
+~~~c
+typedef struct zskiplist{
+    // 表头结点和尾节点
+    struct zskiplistNode *header, *tail;
+    // 表中节点的数量
+    unsigned int length;
+    // 表中层数最大的节点的层数
+    int level;
+} zskiplist;
+~~~
+
+
+
+
+
+如果两个条件有一个不满足，都采用**hashtable+skiplist**的形式存储
+
+其中**hashtable存储value和score的映射关系**，**skiplist按顺序存储value**。
+
+元素按score大小进行排序，当score相同时，元素按照字符串的字典大小进行排序
 
 ![img](images/zsetObject.png)
 
-之所以采用hashtable+skiplist的形式存储zset，是因为这两种结构都各有好处。首先，zset是按照score排序的，skiplist的排序特性刚好满足这种需求；然后，hashtable保存了value和score的映射关系，可以直接通过value来获取score，时间复杂度为O(1)。假如没有使用hashtable，获取score就得在skiplist中逐层下沉地搜索，时间复杂度为O(lg n)。虽然同时使用hashtable和skiplist来保存zset，但是他们共用同一个value和score，因此不会造成空间浪费。
+之所以采用hashtable+skiplist的形式存储zset，是因为这两种结构都各有好处。
 
-至于为啥zset使用skiplist**实现排序功能**，而不用红黑树呢？主要有两点：
+首先，zset是按照score排序的，skiplist的排序特性刚好满足这种需求；
+
+然后，hashtable保存了value和score的映射关系，可以直接通过value来获取score，时间复杂度为O(1)。假如没有使用hashtable，获取score就得在skiplist中逐层下沉地搜索，时间复杂度为O(lg n)。虽然同时使用hashtable和skiplist来保存zset，但是他们共用同一个value和score，因此不会造成空间浪费。
+
+
+
+
+
+> 跳表如何实现快速查找
+
+在链表的基础之上，每两个节点提取一个节点到上一级，也就是**每相邻的两个结点增加一个指针，让指针指向下一个结点**
+
+
+
+skiplist不要求上下相邻两层链表之间的结点个数有严格的对应关系，而是为每个结点随机生成一个层数（level）。比如，一个结点随机生成的层数是5，那么就将它链入到第1层到第5层链表中。
+
+**每一个节点的层数（level）是随机出来的**，而且新插入一个节点不会影响其它节点的层数。因此，**插入操作只需要修改插入节点前后的指针，而不需要对很多节点都进行调整**。这就降低了插入操作的复杂度。
+
+![img](images/580b14b344513bbead4d1b188f94bb25tplv-t2oaga2asx-watermark.awebp)
+
+
+
+至于zset为什么使用skiplist**实现排序功能**，而不用红黑树呢？主要有两点：
 
 - skiplist实现比红黑树实现起来更**简单**，代码更容易维护；
-- skiplist**区间查找效率更高**，跳表可以做到O(lg n) 的时间复杂度定位区间的起点，然后再顺序往后遍历就可以了。
+- skiplist**区间查找效率更高**，上面每一层链表的节点个数，是下面一层的节点个数的一半，这样查找过程就非常类似于一个二分查找，跳表可以做到O(lg n) 的时间复杂度定位区间的起点，然后再顺序往后遍历就可以了。
 
 
 
-### 为什么要用跳表
+
+
+### 跳表对比
 
 | 数据结构 | 实现原理               | key查询方式          | 查找效率     | 存储大小                                                     | 插入、删除效率                               |
 | -------- | ---------------------- | -------------------- | ------------ | ------------------------------------------------------------ | -------------------------------------------- |
@@ -424,9 +537,15 @@ Java里的rehash则不一样，是一次性迁移的，但是在Go里面，map�
 | **B+树** | **平衡二叉树扩展而来** | **单key,范围，分页** | **O(Log(n)** | **除了数据，还多了左右指针，以及叶子节点指针**               | **O(Log(n)，需要调整树的结构，算法比较复杂** |
 | **跳表** | **有序链表扩展而来**   | **单key，分页**      | **O(Log(n)** | **除了数据，还多了指针，但是每个节点的指针小于<2,所以比B+树占用空间小** | **O(Log(n)，只用处理链表，算法比较简单**     |
 
+> 内存占用，范围查找，实现难易程度
 
+1. 首先哈希表不是有序的，只能做单个key的查找，不适合做范围查找
 
+2. **在做范围查找的时候，平衡树比skiplist操作要复杂**，在平衡树上，找到指定范围的小值之后，还需要以**中序遍历的顺序继续寻找其它不超过大值的节点**。如果不对平衡树进行一定的改造，这里的中序遍历并不容易实现。而在skiplist上进行范围查找就非常简单，只需要在找到小值之后，**对第1层链表进行若干步的遍历就可以实现**。
 
+3. 平衡树的插入和删除操作可能引发子树的调整，逻辑复杂，而**skiplist的插入和删除只需要修改相邻节点的指针**，操作简单又快速。
+
+   
 
 
 

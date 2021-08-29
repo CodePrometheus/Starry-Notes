@@ -35,11 +35,21 @@ redis采用定期删除+惰性删除
 
 
 
-## LRU实现
+## LRU实现原理
 
-常规的LRU算法会维护一个双向链表，用来表示访问关系，且需要额外的存储存放 next 和 prev 指针，牺牲比较大的存储空间。
+常规的LRU算法会维护一个**双向链表**，用来表示访问关系，且需要额外的存储存放 next 和 prev 指针，牺牲比较大的存储空间。
 
 Redis的实现LRU会维护一个全局的LRU时钟，并且每个键中也有一个时钟，每次访问键的时候更新时钟值。
+
+默认的LRU时钟的分辨率是1秒，可以通过改变
+REDIS_LRU_CLOCK_RESOLUTION宏的值来改变
+
+~~~c
+#define REDIS_LRU_BITS 24
+unsigned lruclock:REDIS_LRU_BITS; /* Clock for LRU eviction */
+~~~
+
+
 
 淘汰过程：Redis会基于server.maxmemory_samples配置选取固定数目的key，然后比较它们的lru访问时间，然后淘汰最近最久没有访问的key，maxmemory_samples的值越大，Redis的近似LRU算法就越接近于严格LRU算法，但是相应消耗也变高，对性能有一定影响，样本值默认为5。
 
