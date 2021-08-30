@@ -209,25 +209,29 @@
 
 - [SQL查询执行过程](MySQL/SQL查询执行过程.md)
 
-- [MySQL权限详解](MySQL/MySQL权限详解.md)
-
-- [InnoDB存储引擎](MySQL/InnoDB存储引擎.md)
+- [InnoDB](MySQL/InnoDB.md)
 
 - [MySQL日志](MySQL/MySQL日志.md)
 
-- [MySQL事务ACID](MySQL/MySQL事务ACID.md)
+- [ACID](MySQL/ACID.md)
+
+- [MVCC](MySQL/MVCC.md)
+
+- [锁](MySQL/锁.md)
 
 - [MySQL索引分类](MySQL/MySQL索引分类.md)
 
-- [MySQL索引常见问题](MySQL/MySQL索引常见问题.md)
+- [MySQL索引问与答](MySQL/MySQL索引问与答.md)
 
 - [SQL优化](MySQL/SQL优化.md)
 
-- [B和B+Tree](MySQL/B和B+Tree.md)
+- [B与B+Tree](MySQL/B与B+Tree.md)
 
-- [MySQL常见问题](MySQL/MySQL常见问题.md)
+- [MySQL问与答](MySQL/MySQL问与答.md)
 
 - [数据库三范式](MySQL/数据库三范式.md)
+
+- [数据库设计](MySQL/数据库设计.md)
 
 
 
@@ -238,7 +242,7 @@
 
 - [Redis分布式锁](Concurrency/Redis分布式锁.md)
 
-- [Synchronized锁升级过程](Concurrency/Synchronized锁升级过程.md)
+- [Synchronized](Concurrency/Synchronized.md)
 
 - [悲观锁和乐观锁](Concurrency/悲观锁和乐观锁.md)
 
@@ -263,6 +267,8 @@
 - [JVM内存结构](JVM/JVM内存结构.md)
 
 - [垃圾回收](JVM/垃圾回收.md)
+
+- [垃圾回收器](JVM/垃圾回收器.md)
 
 - [GC调优](JVM/GC调优.md)
 

@@ -48,7 +48,7 @@ InnoDB存储引擎由**内存池**和一些**后台线程**组成
 
 ### 内存池
 
-![img](images/v2-c84b7dc8e73d14bcded08d93aaf36457_720w.jpg)
+<img src="images/v2-c84b7dc8e73d14bcded08d93aaf36457_720w.jpg" alt="img" style="zoom:33%;" />
 
 
 
@@ -246,7 +246,7 @@ Insert Buffer带给InnoDB存储引擎的是性能上的提升，doublewrite（�
 
 如果发生写失效，可以通过重做日志进行恢复。这是一个办法。但是必须清楚地认识到，重做日志中记录的是对页的物理操作，如偏移量800，写‘aaaa’记录。如果这个页本身已经发生了损坏，再对其进行重做是没有意义的。这就是说，在应用重做日志前，用户需要一个页的副本，当写入失效发生时，先通过页的副本来还原该页，再进行重做，这就是doublewrite。在InnoDB存储引擎中doublewrite的体系架构如图所示：
 
-![img](images/v2-8a686183bfff4cf09753541b329e3339_720w.jpg)
+<img src="images/v2-8a686183bfff4cf09753541b329e3339_720w.jpg" alt="img" style="zoom: 33%;" />
 
 
 

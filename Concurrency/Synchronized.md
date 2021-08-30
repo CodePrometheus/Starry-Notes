@@ -1,8 +1,25 @@
-# Synchronized锁升级过程
+# Synchronized
 
 [TOC]
 
 <img src="images/v2-bd90ec57ca765b12d8a035a64e09cb97_720w.jpg" alt="img"  />
+
+
+
+
+
+
+
+## 与lock区别
+
+- 锁机制不一样，synchronized是java内置关键字，是在JVM层面实现的，系统会监控锁的释放与否，lock是JDK代码实现的，需要手动释放，在finally块中释放。可以采用非阻塞的方式获取锁
+- 性能不一样：资源竞争激烈的情况下，lock性能会比synchronize好，竞争不激烈的情况下，synchronize比lock性能好，synchronize会根据锁的竞争情况，从偏向锁-->轻量级锁-->重量级锁升级
+- synchronized无法判断是否获取锁的状态，Lock可以判断是否获取到锁；
+- synchronized会自动释放锁(a 线程执行完同步代码会释放锁 ；b 线程执行过程中发生异常会释放锁)，Lock需在finally中手工释放锁（unlock()方法释放锁），否则容易造成线程死锁；
+- synchronized的锁可重入、不可中断、非公平，而Lock锁可重入、可判断、可公平（也可非公平锁）
+- 用法不一样：synchronize可以用在代码块上，方法上。lock只能写在代码里，不能直接修改方法。
+
+
 
 
 
