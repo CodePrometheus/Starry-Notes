@@ -2,6 +2,8 @@
 
 [TOC]
 
+ThreadLocal可以控制线程的数量，避免了反复创建线程和销毁线程的开销
+
 ThreadLocal可以理解为TreadLocalMap的封装，ThreadLocal中存了ThreadLocalMap
 
 > 和HashMap的不同点：
@@ -66,6 +68,8 @@ ThreadLocal为每个使用该变量的线程提供独立的变量副本，所以
 如果 Key使用强引用：也就是上述说的情况，引用ThreadLocal的对象被回收了，ThreadLocal的引用ThreadLocalMap的Key为强引用并没有被回收，**如果不手动回收的话，ThreadLocal将不会回收那么将导致内存泄漏**。
 
 Key使用弱引用：引用的ThreadLocal的对象被回收了，ThreadLocal的引用ThreadLocalMap的Key为弱引用，如果内存回收，那么将ThreadLocalMap的Key将会被回收，ThreadLocal也将被回收**。value在ThreadLocalMap调用get、set、remove的时候就会被清除。**
+
+**如果vaule设计为弱引用，可能获取到的是null ，毫无意义。**
 
 
 
@@ -248,3 +252,17 @@ keepAliveTime的计量单位
 ④DiscardOldestPolicy
 
 该策略下，抛弃进入队列最早的那个任务，然后尝试把这次拒绝的任务放入队列
+
+
+
+
+
+## 线程复用
+
+![在这里插入图片描述](images/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3dlaXhpbl80ODUwOTI3MA==,size_16,color_FFFFFF,t_70.png)
+
+
+
+创建指定数量的线程并开启，判断当前是否有任务执行，如果有则执行任务。
+
+线程复用就是通过 一个线程始终会在**while循环里不断的被重复利用**，然后去取Worker对象的firstTask或者通过getTask方法从工作队列中**获取待执行的任务**

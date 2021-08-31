@@ -136,7 +136,6 @@ undo log（回滚日志）保证事务的一致性
 
 Innodb引擎通过以下方式实现事务的隔离性:
 
-- 事务自动提交(Autocommit)配置
 - 隔离级别设置
 - 不同隔离级别和相对应的锁机制
 
@@ -175,7 +174,9 @@ Oracle数据库不支持READ UNCOMMITTED和REPEATABLE READ隔离级别
 
 而MySQL支持这全部4种隔离级别
 
-![img](images/v2-3b2fa6c532dcb4756b12a04ace0ac431_720w.png)
+![](images/26823d92df2c45e5a4aead8b8556e9f0.png)
+
+
 
 MySQL是支持REPEATABLE READ隔离级别，在这个级别下可以解决“不可重复读”的问题，是真正满足ACID中隔离性的要求的，但锁粒度比READ COMMITTED隔离级别要重。
 
