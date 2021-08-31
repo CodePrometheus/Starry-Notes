@@ -154,6 +154,17 @@ redoLog和binLog的两阶段提交具有crash-safe能力，保证持久性
 
 ## 四大隔离级别
 
+**如何查看隔离级别**
+
+~~~shell
+SELECT @@tx_isolation;// 查看当前会话隔离级别
+set session transaction isolation level repeatable read; // 设置当前会话隔离级别
+select @@global.tx_isolation; // 查看系统当前隔离级别
+set global transaction isolation level repeatable read; // 查看系统当前隔离级别
+~~~
+
+
+
 当数据库上有多个事务同时执行的时候，就可能出现脏读（dirty read）、不可重复读（non-repeatable read）、幻读（phantom read）的问题，为了解决这些问题，就有了“隔离级别”的概念。
 
 隔离性其实比想象的要复杂，简单来说，隔离性的作用就是**保证在多个事务并行执行时，相互之间不会影响**；比如一个事务的修改对其他事务是不可见的，好似多个事务是串行执行的。

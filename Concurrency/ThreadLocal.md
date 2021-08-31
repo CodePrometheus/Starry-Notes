@@ -237,7 +237,7 @@ keepAliveTime的计量单位
 
 该策略下，在调用者线程中**直接执行被拒绝任务的run方法**，除非线程池已经shutdown，则直接抛弃任务。
 
-②AbortPolicy
+②AbortPolicy（默认的拒绝策略）
 
 该策略下，直接丢弃任务，并抛出RejectedExecutionException异常。
 
