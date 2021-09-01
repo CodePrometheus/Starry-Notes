@@ -2,6 +2,22 @@
 
 [TOC]
 
+
+
+## 原理
+
+ThreadLocal的实现原理是，在每个线程中维护一个Map，键是ThreadLocal类型，值是Object类型，当想获取ThreadLocal的值上，就从当前线程中拿出Map，然后在把ThreadLocal本身作为键从Map中拿出值返回。
+
+
+
+> **与Synchonized的对照:** ThreadLocal和Synchonized都用于解决多线程并发防问。可是ThreadLocal与synchronized有本质的差别。synchronized是利用**锁的机制**，使变量或代码块在某一时该仅仅能被一个线程訪问。**而ThreadLocal为每个线程都提供了变量的副本，使得每个线程在某一时间訪问到的并非同一个对象**，这样就隔离了多个线程对数据的数据共享。而Synchronized却正好相反，它用于在多个线程间通信时可以获得数据共享。
+
+
+
+**Synchronized用于线程间的数据共享，而ThreadLocal则用于线程间的数据隔离。**
+
+
+
 ThreadLocal可以控制线程的数量，避免了反复创建线程和销毁线程的开销
 
 ThreadLocal可以理解为TreadLocalMap的封装，ThreadLocal中存了ThreadLocalMap
@@ -11,7 +27,7 @@ ThreadLocal可以理解为TreadLocalMap的封装，ThreadLocal中存了ThreadLoc
 > hash计算方式不同，另外ThreadLocalMap解决冲突的方法是**开放地址法**。
 
 
-其中key是ThreadLocal对象引用，value是当前线程存储值
+其中**key是ThreadLocal对象引用，value是当前线程存储值**
 
 ThreadLocal在父子线程之间是**不可以被继承**的
 
@@ -39,8 +55,11 @@ void createMap(Thread t, T firstValue) {
 
 // 静态内部类
 static class ThreadLocalMap {
+	private static final int INITIAL_CAPACITY = 16;//初始数组大小
+    private Entry[] table;//每个可以拥有多个ThreadLocal
+    private int size = 0;
+    private int threshold;//扩容阀值
     static class Entry extends WeakReference<ThreadLocal<?>> {
-        /** The value associated with this ThreadLocal. */
         Object value;
 
         Entry(ThreadLocal<?> k, Object v) {
@@ -48,14 +67,40 @@ static class ThreadLocalMap {
             value = v;
         }
     }
-
-    ThreadLocalMap(ThreadLocal<?> firstKey, Object firstValue) {
-        table = new Entry[INITIAL_CAPACITY];
-        int i = firstKey.threadLocalHashCode & (INITIAL_CAPACITY - 1);
-        table[i] = new Entry(firstKey, firstValue);
-        size = 1;
-        setThreshold(INITIAL_CAPACITY);
+ 
+    private Entry getEntry(ThreadLocal<?> key) {
+        int i = key.threadLocalHashCode & (table.length - 1);
+        Entry e = table[i];
+        if (e != null && e.get() == key)
+            return e;
+        else
+            return getEntryAfterMiss(key, i, e);
     }
+    
+    private void set(ThreadLocal<?> key, Object value) {
+        Entry[] tab = table;
+        int len = tab.length;
+        int i = key.threadLocalHashCode & (len-1);
+        for (Entry e = tab[i];
+             e != null;
+             e = tab[i = nextIndex(i, len)]) {
+            ThreadLocal<?> k = e.get();
+            if (k == key) {
+                e.value = value;
+                return;
+            }
+            if (k == null) {
+            		//循环利用key过期的Entry
+                replaceStaleEntry(key, value, i);
+                return;
+            }
+        }
+        tab[i] = new Entry(key, value);
+        int sz = ++size;
+        if (!cleanSomeSlots(i, sz) && sz >= threshold)
+            rehash();
+    }
+	...
 }
 ~~~
 
