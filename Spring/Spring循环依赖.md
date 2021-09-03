@@ -44,3 +44,25 @@ Spring中循环依赖场景有:
 
 
 
+
+
+## Bean作用域scope
+
+> 五种模式
+
+- **Singleton** 默认的scope，减少消耗、减少gc、快速获取到Bean
+
+  单例Bean存在线程安全问题，可将需要的可变成员变量保存在ThreadLocal中
+  
+- **Prototype** 每次请求都会创建一个新的Bean实例
+
+- **Request** 每一次HTTP请求都会产生一个新的Bean，该bean仅在当前HTTP request内有效
+
+- **Session** 每⼀次HTTP请求都会产⽣⼀个新的 bean，该bean仅在当前 HTTP session 内有效
+
+- **GlobalSession** 全局session作⽤域，仅仅在基于portlet的web应⽤中才有意义，Spring5已 经没有了
+
+- **自定义Bean作用域** 实现Scope接口
+
+
+
