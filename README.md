@@ -328,6 +328,9 @@
 
 - [SpringMVC流程](Spring/SpringMVC流程.md)
 
+- [自动装配](Spring/自动装配.md)
+
+
 
 ## Go
 
