@@ -37,14 +37,14 @@
 
 2. **为对象分配内存**，计算对象占用空间大小，接着在堆中划分一块内存给新对象，如果实例成员变量是引用变量，仅分配引用变量空间即可，即4字节大小
 
-   > 内存分配两大方式
+   > **内存分配两大方式**
 
    > 如果内存是规整的，那么虚拟机将采用的是**指针碰撞**来为对象分配内存，即所有用过的内存放在一边，空闲的内存在另一边，中间放一个指针作为分界点的指示器，分配内存仅仅是把指针向空闲那边挪动一段对象大小相等的距离
 
    > 如果内存不规整（即已使用的内存和未使用的内存相互交错），虚拟机需要维护一个列表，使用空间列表分配（**空闲列表**）
 
    > 分配空间的时候，因为堆是共用的，需要处理并发安全问题，一般采用CAS或TLAB
-   
+
 3. **初始化分配到的空间**
 
    > 内存分配结束，虚拟机将分配到的内存空间都初始化为零值（不包括对象头），这一步保证了对象的实例字段在Java里可以不用赋初始值就可以直接使用（所对应的零值）
@@ -150,4 +150,53 @@ OopMap虽然可以进行快速准确的Gc Root枚举，但是虚拟机的指令�
 **第二阶段**：主线程启动执行并进入到Java可执行文件（exe/elf）中的main函数（C++层面）
 
 **第三阶段**：创建JVM，寻找启动类中的main方法，启动解释器执行对应字节码进入Java世界
+
+
+
+
+
+### ClassLoader.loadClass 和Class.forName的区别
+
+对于Class.forName 
+
+~~~java
+public static Class<?> forName(String name, boolean initialize,
+                               ClassLoader loader)
+~~~
+
+- name: 要加载Class的名字 全限定类名
+- initialize: 是否要初始化
+- loader : 指定的classLoader类加载器
+
+
+
+> forName会初始化类，将.class文件加载到jvm中，还会执行类中的static块，还会执行给静态变量赋值的静态方法，得到的class是已经初始化完成的
+
+
+
+对于 ClassLoader.loadClass()
+
+~~~java
+protected Class<?> loadClass(String name, boolean resolve)
+        throws ClassNotFoundException
+~~~
+
+- name : class的名字
+- resolve : 是否要进行链接
+
+> loadClass()只将class文件加载到jvm中，不会执行static中的内容,只有在newInstance才会去执行static块，得到的class是还没有链接的
+
+
+
+**通过传入的参数可以知道,Class.forName 执行之后已经对 被加载类的静态变量分配完毕了存储空间，而classLoader.loadClass `并没有一定执行完` 链接这一步**.
+
+
+
+**使用场景**
+
+有些情况下只需要知道这个类的存在而不需要初始化，使用loadClass即可
+
+数据库驱动加载就是使用Class.froName(“com.mysql.jdbc.Driver”)，是由于Driver类下的static块初始化后才能得到DriverManager
+
+
 

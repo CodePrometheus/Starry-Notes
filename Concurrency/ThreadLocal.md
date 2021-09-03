@@ -249,7 +249,15 @@ keepAliveTime的计量单位
 
 ### 5.workQueue 工作队列
 
-新任务被提交后，会先进入到此工作队列中，任务调度时再从队列中取出任务。jdk中提供了四种工作队列：
+新任务被提交后，会先进入到此工作队列中，任务调度时再从队列中取出任务。jdk中提供了四种工作队列，都是阻塞队列。
+
+如果BlockQueue是**空的**,从BlockingQueue**取东西的操作将会被阻断进入等待状态**,直到BlockingQueue进了东西才会被唤醒。
+
+同样,如果BlockingQueue是**满的**,任何试图往里**存东西的操作也会被阻断进入等待状态**,直到BlockingQueue里有空间才会被唤醒继续操作。
+
+
+
+
 
 ①ArrayBlockingQueue
 
@@ -304,6 +312,10 @@ keepAliveTime的计量单位
 
 ## 线程复用
 
+线程池将线程和任务解耦，摆脱了之前Thread创建线程时一个线程必须对应一个任务的限制
+
+在线程池中，**同一个线程可以从阻塞队列中不断的获取新任务执行**，其核心原理在于线程池对Thread进行了封装，并不是每一次调用线程都会调用Thread.start()来创建新线程，而是让每个**线程去执行循环任务**，在这个**循环任务中不停检查是否有任务需要被执行**
+
 ![在这里插入图片描述](images/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3dlaXhpbl80ODUwOTI3MA==,size_16,color_FFFFFF,t_70.png)
 
 
@@ -311,3 +323,137 @@ keepAliveTime的计量单位
 创建指定数量的线程并开启，判断当前是否有任务执行，如果有则执行任务。
 
 线程复用就是通过 一个线程始终会在**while循环里不断的被重复利用**，然后去取Worker对象的firstTask或者通过getTask方法从工作队列中**获取待执行的任务**
+
+
+
+
+
+## 线程执行流程
+
+exeute —> addWorker（Runnable command， boolean core）—> workers.add（w），启动线程执行任务（获取全局锁ReentrantLock mainLock）
+
+~~~java
+public void execute(Runnable command) {
+    if (command == null)
+        throw new NullPointerException();
+    int c = ctl.get();
+    // 如果当前正在运行的线程数小于corePoolSize，则创建新的线程
+    // 执行当前任务
+    if (workerCountOf(c) < corePoolSize) {
+        if (addWorker(command, true))
+            return;
+        c = ctl.get();
+    }
+    // 如果当前运行的线程数大于等于corePoolSize或者线程创建失败
+    // 则把当前任务放入工作队列
+    if (isRunning(c) && workQueue.offer(command)) {
+        int recheck = ctl.get();
+        // 判断之前是否已经添加过线程执行该任务（因为可能之前）
+        // 创建的线程已经死亡了）或者线程池是否已经关闭。如果
+        // 两个答案都是肯定的，那么选择拒绝执行任务
+        if (!isRunning(recheck) && remove(command))
+            reject(command);
+        else if (workerCountOf(recheck) == 0)
+            addWorker(null, false);
+    }
+    // 如果线程池任务无法加入到工作队列（说明工作队列满了）
+    // 创建一个线程执行任务。如果新创建后当前运行的线程数大于
+    // maximumPoolSize则拒绝执行任务
+    else if (!addWorker(command, false))
+        reject(command);
+}
+
+~~~
+
+~~~java
+private boolean addWorker(Runnable firstTask, boolean core){
+    // 省略部分代码
+    boolean workerStarted = false;
+    boolean workerAdded = false;
+    Worker w = null;
+    try {
+        // 这里就将提交的任务封装成为Worker了
+        w = new Worker(firstTask);
+        // Worker实现了Runnable接口，里面定义了一个final变量Thread thread
+        final Thread t = w.thread;
+        if (t != null) {
+            // 使用加锁的方式原子添加工作线程
+            // 可重入mainLock
+            final ReentrantLock mainLock = this.mainLock;
+            mainLock.lock();
+            try {
+                // 在获得锁期间再次检查线程池的运行状态
+                // 如果线程池已经关闭或者任务为空则抛出异常
+                int rs = runStateOf(ctl.get());
+                if (rs < SHUTDOWN ||
+                    (rs == SHUTDOWN && firstTask == null)) {
+                    if (t.isAlive()) 
+                        throw new IllegalThreadStateException();
+                    // 加入Worker数组
+                    workers.add(w);
+                    int s = workers.size();
+                    if (s > largestPoolSize)
+                        largestPoolSize = s;
+                    workerAdded = true;
+                }
+            } finally {
+                mainLock.unlock();
+            }
+            if (workerAdded) {
+                // 如果添加成功则启动线程执行任务
+                t.start();
+                workerStarted = true;
+            }
+        }
+    } finally {
+        if (!workerStarted)
+            addWorkerFailed(w);
+    }
+    return workerStarted;
+}
+~~~
+
+~~~java
+final void runWorker(Worker w) {
+    Thread wt = Thread.currentThread();
+    Runnable task = w.firstTask;
+    w.firstTask = null;
+    w.unlock(); // allow interrupts
+    boolean completedAbruptly = true;
+    try {
+        while (task != null || (task = getTask()) != null) {
+            w.lock();
+            try {
+                beforeExecute(wt, task);
+                Throwable thrown = null；
+                    task.run();
+                afterExecute(task, thrown);
+            } finally {
+                task = null;
+                w.completedTasks++;
+                w.unlock();
+            }
+        }
+        completedAbruptly = false;
+    } finally {
+        processWorkerExit(w, completedAbruptly);
+    }
+}
+~~~
+
+
+
+
+
+## 为什么要使用阻塞队列
+
+阻塞队列常用于生产者和消费者的场景，生产者是往队列里添加元素的线程，消费者是从队列里拿元素的线程。阻塞队列就是生产者存放元素的容器，而消费者也只从容器里拿元素。
+
+阻塞队列中有元素后，被阻塞的线程会被**自动唤醒**，如果是非阻塞队列必须额外的实现同步策略以及线程间唤醒的策略
+
+
+
+- 线程池创建线程需要获取**mainlock**这个全局锁，影响并发效率，阻塞队列可以很好的**缓冲**。
+- 如果新任务的到达速率超过了线程池的处理速率，那么新到来的请求**将累加起来**，这样的话将**耗尽资源**。
+- 阻塞队列自带阻塞和唤醒功能，不需要做额外处理，无任务执行时，线程池利用阻塞队列的take方法挂起，从而维持核心线程的存活，不至于一直占用CPU资源
+
