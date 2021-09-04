@@ -233,6 +233,10 @@ private int expungeStaleEntry(int staleSlot) {
 
 一个任务被提交到线程池以后，首先会找有没有空闲存活线程，如果有则直接将任务交给这个空闲线程来执行，如果没有（也就是corePoolsize的线程没有空闲的）则会**缓存到工作队列中**，如果工作队列满了（且corePoolsize小于maximumPoolSize ），才会创建一个新线程，然后从**工作队列的头部**取出一个任务交由新线程来处理，而将**刚提交的任务放入工作队列尾部**，新建的线程会直接执行刚刚提交的任务。线程执行完工作后才去队列头部找有没有工作。线程池不会无限制的去创建新线程，它会有一个最大线程数量的限制，这个数量即由maximunPoolSize的数量减去corePoolSize的数量来确定，最多能达到maximunPoolSize即最大线程池线程数量
 
+![](images/e4cfbd174c01486ea7814a6b63ec0023.png)
+
+
+
 
 
 ### 3.keepAliveTime 空闲线程存活时间
