@@ -867,6 +867,8 @@ final Entry<K,V> getEntry(Object key) {
 
 ## 死循环问题
 
+头插法插入的顺序和原来链表顺序相反，table 是共享的，table 里面的元素也是共享的，while 循环都直接修改 table 里面的元素的 next 指向，导致指向混乱。
+
 ### 前置条件
 
 为了演示方便，初始状态时，hashmap容量为2，加载因子为默认的0.75.
@@ -1031,7 +1033,8 @@ void transfer(Entry[] newTable, boolean rehash) {
             if (rehash) {
                 e.hash = null == e.key ? 0 : hash(e.key);
             }
-            int i = indexFor(e.hash, newCapacity);   
+            int i = indexFor(e.hash, newCapacity);  
+            // 成环的代码主要是在这三行代码
             //pos_2
             e.next = newTable[i];
             //pos_3

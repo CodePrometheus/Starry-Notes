@@ -447,7 +447,6 @@ final void treeifyBin(Node<K,V>[] tab, int hash) {
 > 扩容，返回一个新数组
 
 ~~~java
-
 // 该函数有2种使用情况：1、初始化哈希表 2、当前数组容量过小，需扩容   
 final Node<K,V>[] resize() {
     Node<K,V>[] oldTab = table; // 扩容前的数组（当前数组）
@@ -555,7 +554,7 @@ final Node<K,V>[] resize() {
                     }
                     /**
                      * 原索引+oldCap放到bucket里
-                     * hiHead链表对应新数组的位置就是，j + oldCap，这里也就是为什么数组大小一定要是2的倍数
+                     * hiHead链表对应新数组的位置就是， 原索引+原s，这里也就是为什么数组大小一定要是2的倍数
                      * 注意到，这里不需要重新hash，可以节省hash时间，其实就算就行重新hash，rehash的值也是j + oldCap，这就是hashmap非常巧妙的地方。
                      */
                     if (hiTail != null) {

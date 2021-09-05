@@ -70,6 +70,18 @@ Transactions 事务管理
 
 
 
+### 原理
+
+> 使用**动态代理**的方式在**执行方法的前后或出现异常时加入相关逻辑**
+
+- 前置通知：方法执行前执行；@After
+- 后置通知：方法执行后执行；@Before
+- 环绕通知：前后都执行；@Around
+- 异常通知：出异常时通知；@AfterThrowing
+- 最终通知：如return后执行。@AfterReturning
+
+
+
 ## Spring如何实现依赖注入
 
 通过spring getBean()拿到的对象实例，都是**通过读取applicationContext.xml文件，再通过反射拿到的类的实例对象**。
@@ -86,7 +98,7 @@ Transactions 事务管理
 
 
 
-**java动态代理是利用反射机制生成一个实现代理接口的匿名类，在调用具体方法前调用InvokeHandler来处理，代理类的所有方法调用都是通过 InvocationHandler.invoke 方法实现，JDK动态代理只能对实现了接口的类生成代理，而不能针对类**
+**java动态代理是利用反射机制生成一个实现代理接口的匿名类，在调用具体方法前调用InvokeHandler来处理，代理类的所有方法调用都是通过 InvocationHandler.invoke 方法实现，JDK动态代理只能对实现了（InvocationHandler）接口的类生成代理，而不能针对类**
 
 
 
@@ -118,4 +130,3 @@ Transactions 事务管理
 - 通过为Proxy类指定ClassLoader对象和一组interface来创建动态代理；
 - 通过反射机制获取动态代理类的构造函数，其唯一参数类型就是调用处理器接口类型；
 - 通过构造函数创建动态代理类实例，构造时调用处理器对象作为参数参入；
-  

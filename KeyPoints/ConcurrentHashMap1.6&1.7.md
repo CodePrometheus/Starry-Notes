@@ -226,7 +226,7 @@ static final class HashEntry<K,V> {
 
 ConcurrentHashMap 一共提供了五个构造函数，其中默认无参的构造函数和参数为Map的构造函数 为 Java Collection Framework 规范的推荐实现，其余三个构造函数则是 ConcurrentHashMap 专门提供的。
 
-### ConcurrentHashMap(int initialCapacity, float loadFactor, int concurrencyLevel)
+**ConcurrentHashMap(int initialCapacity, float loadFactor, int concurrencyLevel)**
 
 该构造函数意在构造一个具有指定容量、指定负载因子和指定段数目/并发级别(若不是2的幂次方，则会调整为2的幂次方)的空ConcurrentHashMap，其相关源码如下：
 
@@ -282,7 +282,7 @@ public ConcurrentHashMap(int initialCapacity,
 
 
 
-### ConcurrentHashMap(int initialCapacity, float loadFactor)
+**ConcurrentHashMap(int initialCapacity, float loadFactor)**
 
 该构造函数意在构造一个具有指定容量、指定负载因子和默认并发级别(16)的空ConcurrentHashMap，其相关源码如下：
 
@@ -308,7 +308,7 @@ public ConcurrentHashMap(int initialCapacity, float loadFactor) {
 
 
 
-### ConcurrentHashMap(int initialCapacity)
+**ConcurrentHashMap(int initialCapacity)**
 
 该构造函数意在构造一个具有指定容量、默认负载因子(0.75)和默认并发级别(16)的空ConcurrentHashMap，其相关源码如下：
 
@@ -329,7 +329,7 @@ public ConcurrentHashMap(int initialCapacity) {
 
 
 
-### ConcurrentHashMap()
+**ConcurrentHashMap**()
 
 该构造函数意在构造一个具有默认初始容量(16)、默认负载因子(0.75)和默认并发级别(16)的空ConcurrentHashMap，其相关源码如下：
 
@@ -345,7 +345,7 @@ public ConcurrentHashMap() {
 
 
 
-### ConcurrentHashMap(Map<? extends K, ? extends V> m)
+**ConcurrentHashMap(Map<? extends K, ? extends V> m)**
 
 该构造函数意在构造一个与指定 Map 具有相同映射的 ConcurrentHashMap，其初始容量不小于 16 (具体依赖于指定Map的大小)，负载因子是 0.75，并发级别是 16， 是 Java Collection Framework 规范推荐提供的，其源码如下：
 
