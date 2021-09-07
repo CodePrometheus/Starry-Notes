@@ -187,7 +187,7 @@ public static void wrongReleaseLock2(Jedis jedis, String lockKey, String request
 
 > 出现的问题
 
-1. setnx与expire的非原子性
+1. setnx与expire的**非原子性**
 
 2. 锁误解除
 
@@ -276,9 +276,23 @@ private static final Long RELEASE_SUCCESS = 1L;
 
 
 
+![img](images/759814-20181126113038352-583246905.png)
+
+
+
+**主要特点**
+
+- 加锁解锁都执行对应的lua脚本，保证业务逻辑执行的**原子性**
+- watch dog 自动延期机制
+- 可重入锁的实现 incrby 
+
+
+
 只要线程一加锁成功，就会启动一个`watch dog`看门狗，它是一个后台线程，会每隔10秒检查一下，如果线程1还持有锁，那么就会不断的延长锁key的生存时间。因此，Redisson就是使用Redisson解决了**「锁过期释放，业务没执行完」**问题。
 
 也就是用该机制保证锁时间大于业务执行时间，由该守护线程给锁进行无限续期，当锁不存在时就跳过，存在就续期，作为守护线程的原因是：守护线程**依赖于主线程**，当主线程挂了之后，守护线程也会挂掉！这样能**避免程序宕机之后，续期的线程依旧续期，造成死锁**
+
+
 
 
 

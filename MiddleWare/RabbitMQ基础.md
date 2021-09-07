@@ -370,7 +370,7 @@ public class Consumer2 {
 - C：消费者：消息的接受者，会一直等待消息到来。
 - queue：消息队列，图中红色部分。类似一个邮箱，可以缓存消息；生产者向其中投递消息，消费者从其中取出消息。
 
-> 默认的exchange:如果用空字符串去声明一个exchange，那么系统就会使用””AMQP default”这个exchange，我们创建一个queue时,默认的都会有一个和新建queue同名的routingKey绑定到这个默认的exchange上去
+> 默认的exchange:如果用空字符串去声明一个exchange，那么系统就会使用””AMQP default”这个exchange，我们创建一个queue时,默认的都会有一个和**新建queue同名的routingKey**绑定到这个默认的exchange上去
 
   **不会根据生产者去创建，而取决于消费者**
 
