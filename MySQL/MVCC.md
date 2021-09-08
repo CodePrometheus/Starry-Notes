@@ -140,6 +140,58 @@ MVCC指的就是在使用RC，RR在执行select操作时访问记录的版本链
 
 
 
+### 基于ReadView实现RR
+
+m_ids：记录生成readview的时候此刻还未提交的trx_id(事务ID)
+
+min_trx_id：m_ids中的最小值
+
+max_trx_id：是mysql下一个要生成的事务ID,最大事务ID.就是m_ids中最大的下一个
+
+creator_trx_id：（当前的）自己的事务ID
+
+![img](images/b2d35024d95ce5abdb7698466bfb4ad7.png)
+
+
+
+
+
+![](images/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzM3MTE0NTQ1,size_16,color_FFFFFF,t_70.png)
+
+
+
+
+
+### 基于ReadView实现RC
+
+每次查询都会新生成一个ReadView,如果事务B已经提交了,并且他的值可以被事务A读取到,事务A中多次查询的时候都会生成一个新的ReadView,此时因为事务B已经提交了,m_ids里面没有事务B的值,所以数据可以被读取到
+
+
+
+
+
+### undo log 中记录和 read-view 的比对
+
+之所以在可重读级别下能够始终看到的数据都和启动时候看的是一致的，原因就是因为高低水位加上一个当前事务id以及一个比对结果
+
+![img](images/1948872-20210307200655079-294030340.png)
+
+
+
+1. 如果当前记录的事务id落在绿色部分（trx_id < min_id），表示这个版本是已提交的事务生成的，可读。
+2. 如果当前记录的事务id落在红色部分（trx_id > max_id），表示这个版本是由将来启动的事务生成的，不可读。
+3. 如果当前记录的事务id落在黄色部分（min_id <= trx_id <= max_id），则分为两种情况：
+   - 若当前记录的事务id在未提交事务的数组中，则此条记录不可读；
+   - 若当前记录的事务id不在未提交事务的数组中，则此条记录可读。
+
+
+
+
+
+
+
+
+
 ### RR、RC生成时机
 
 - `RC`隔离级别下，是每个`快照读`都会`生成并获取最新`的`Read View`；

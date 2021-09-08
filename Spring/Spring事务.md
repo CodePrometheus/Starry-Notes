@@ -4,7 +4,7 @@
 
 
 
-## Spring事务传播行为
+## Spring事务七大传播行为（特性）
 
 当事务方法被另一个事务方法调用时，必须指定事务应该如何传播。例如：方法可能继续在现有事务中运行，也可能开启一个新事务
 
@@ -14,7 +14,7 @@
 
 
 
-### 支持当前事务的情况：
+### 支持当前事务的情况
 
 - **TransactionDefinition.PROPAGATION_REQUIRED（默认属性）：** 如果当前存在事务，则**加入**该事务；如果当前没有事务，则**创建**一个新的事务。
 - **TransactionDefinition.PROPAGATION_SUPPORTS：** 如果当前存在事务，则**加入**该事务；如果当前没有事务，则以**非事务**的方式继续运行。
@@ -26,7 +26,7 @@
 
 
 
-### 不支持当前事务的情况：
+### 不支持当前事务的情况
 
 - **TransactionDefinition.PROPAGATION_REQUIRES_NEW：** **创建**一个新的事务，如果当前存在事务，则把当前事务**挂起**。
 - **TransactionDefinition.PROPAGATION_NOT_SUPPORTED：** 以**非事务**方式运行，如果当前存在事务，则把当前事务**挂起**。
@@ -34,13 +34,13 @@
 
 
 
-### 其他情况：
+### 其他情况
 
 - **TransactionDefinition.PROPAGATION_NESTED：** 如果当前存在事务，则创建一个事务作为当前事务的**嵌套事务**来运行；如果当前没有事务，则该取值等价于TransactionDefinition.PROPAGATION_REQUIRED。
 
 
 
-## Spring事务隔离级别
+## Spring事务五大隔离级别
 
 ~~~java
 @Transactional(isolation = Isolation.DEFAULT)
@@ -48,7 +48,7 @@
 
 
 
-- **TransactionDefinition.ISOLATION_DEFAULT:** 使用后端数据库默认的隔离级别，Mysql 默认采用的 REPEATABLE_READ隔离级别 Oracle 默认采用的 READ_COMMITTED隔离级别.
+- **TransactionDefinition.ISOLATION_DEFAULT:** 使用**数据库默认的隔离级别**，Mysql 默认采用的 REPEATABLE_READ隔离级别 Oracle 默认采用的 READ_COMMITTED隔离级别.
 - **TransactionDefinition.ISOLATION_READ_UNCOMMITTED:** 最低的隔离级别，允许读取尚未提交的数据变更，**可能会导致脏读、幻读或不可重复读**
 - **TransactionDefinition.ISOLATION_READ_COMMITTED:** 允许读取并发事务已经提交的数据，**可以阻止脏读，但是幻读或不可重复读仍有可能发生**
 - **TransactionDefinition.ISOLATION_REPEATABLE_READ:** 对同一字段的多次读取结果都是一致的，除非数据是被本身事务自己所修改，**可以阻止脏读和不可重复读，但幻读仍有可能发生。**
@@ -91,5 +91,22 @@ transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQ
 
 - 切点是否配置正确
 
-  
+
+
+
+
+
+
+
+## 事务回滚
+
+Spring的事务管理默认**只对未检查异常**(java.lang.RuntimeException**及其子类**)进行回滚
+
+
+
+
+
+
+
+
 

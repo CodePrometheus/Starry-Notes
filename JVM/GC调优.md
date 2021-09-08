@@ -63,3 +63,24 @@
 
 ![image-20210512205320857](images/image-20210512205320857.png)
 
+
+
+
+
+## 常见配置
+
+-Xms：初始堆大小
+
+-Xmx：最大堆大小
+
+-XX:NewSize=n：设置年轻代大小
+
+-XX:NewRatio=n：设置年轻代和年老代的比值。如:为3，表示年轻代与年老代比值为1：3，年轻代占整个年轻代年老代和的1/4
+
+-XX:SurvivorRatio=n：年轻代中Eden区与两个Survivor区的比值。注意Survivor区有两个。如：3，表示Eden：Survivor=3：2，一个Survivor区占整个年轻代的1/5
+
+-XX:PermSize：表示非堆区初始内存分配大小（方法区）
+-XX:MaxPermSize：表示对非堆区分配的内存的最大上限（方法区）。
+
+
+
