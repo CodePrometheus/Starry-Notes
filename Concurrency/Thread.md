@@ -4,11 +4,23 @@
 
 
 
-## 五大状态
+## 五大生命周期
 
 精准唤醒指定线程 **condition**
 
 ![](images/7e76cc17-0ad5-3ff3-954e-1f83463519d1.jpg)
+
+
+
+## 六大状态
+
+![img](images/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2FidTkzNTAwOTA2Ng==,size_16,color_FFFFFF,t_70#pic_center.jpeg)
+
+
+
+- BLOCKED状态只有在synchronized代码块或者synchronized方法里面才可能会出现
+
+
 
 
 
@@ -22,6 +34,11 @@
 - sleep需要**捕获异常** 。wait notify 等不需要这些。
 
 
+
+**相同点**
+
+- 都会让出CPU
+- 线程都会进入 **等待状态 WAITING/TIMED_WAITING**
 
 
 

@@ -38,6 +38,8 @@
 
 ![img](images/20201209163352.png)
 
+
+
 ## Https加密方式
 
 1. 浏览器使用Https的URL访问服务器，建立SSL链接。
