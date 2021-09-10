@@ -1,5 +1,11 @@
 # Canal
 
+[TOC]
+
+
+
+## 原理
+
 ![img](images/687474703a2f2f646c2e69746579652e636f6d2f75706c6f61642f6174746163686d656e742f303038302f333130372f63383762363762612d333934632d333038362d393537372d3964623035626530346339352e6a7067)原理：
 canal模拟mysql slave的交互协议，伪装自己为mysql slave，向mysql master发送dump协议
 mysql master收到dump请求，开始推送binary log给slave(也就是canal)
@@ -7,7 +13,35 @@ canal解析binary log对象(原始为byte流)
 
 
 
- **1、Canal会不会丢失数据**
+
+
+## 如何保证HA
+
+canal的HA机制，依赖了zookeeper两个特性，watcher 和 EPHEMERAL（临时节点）
+
+为了缩小对mysql dump的申请，不同server上的instance要求同一时间只能有一个处于running，其余的处于standby状态。
+
+**canal server流程**
+
+1. canal server 要启动某个 canal instance 时都先向 zookeeper 进行一次尝试启动判断 (实现：创立 EPHEMERAL 节点，谁创立胜利就容许谁启动）；
+2. 创立 zookeeper 节点胜利后，对应的 canal server 就启动对应的 canal instance，没有创立胜利的 canal instance 就会处于 standby 状态；
+3. 一旦 zookeeper 发现 canal server A 创立的节点隐没后，立刻告诉其余的 canal server 再次进行步骤1的操作，**重新选出**一个 canal server 启动instance；
+4. canal client 每次进行connect时，会首先向 zookeeper 询问以后是谁启动了canal instance，而后和其建设链接，一旦链接不可用，会从新尝试connect。
+
+
+
+**canal client流程**
+
+- canal client 的形式和 canal server 形式相似，也是利用 zookeeper 的抢占EPHEMERAL 节点的形式进行管制
+- **为了保障有序性，一份 instance 同一时间只能由一个 canal client 进行get/ack/rollback操作，否则客户端接管无奈保障有序**。
+
+
+
+
+
+
+
+##  Canal会不会丢失数据
 
   答：Canal正常情况下不会丢失数据，比如集群节点失效、重启、Consumer关闭等；但是，存在丢数据的风险可能存在如下几种可能：
 
@@ -17,11 +51,11 @@ canal解析binary log对象(原始为byte流)
 
 ​    3）切换MySQL源，比如原来基于M1实例，后来M1因为某种原因失效，那么Canal将数据源切换为M2，而且M1和M2可能binlog数据存在不一致（非常有可能）。
 
-​    4）Consumer端ACK的时机不佳，比如调用get()方法，而不是getWithoutAck()，那么消息有可能尚未完全消费，就已经ACK，那么此时由异常或者Consumer实例失效，则可能导致消息丢失。我们需要在ACK时机上保障“at lease once”。
+​    4）Consumer端ACK的时机不佳，比如调用get()方法，而不是getWithoutAck()，那么消息有可能尚未完全消费，就已经ACK，那么此时由异常或者Consumer实例失效，则可能导致消息丢失。需要在ACK时机上保障“at lease once”。
 
 
 
- **2、Canal的延迟很大是什么原因？**
+##  Canal的延迟很大是什么原因
 
 答：根据数据流的pipeline，“Master” > "Slave" > "Canal" > "Consumer"，每个环节都需要耗时，而且整个管道中都是单线程、串行、阻塞式。（假如网络层面都是良好的）
 
@@ -33,7 +67,7 @@ canal解析binary log对象(原始为byte流)
 
  
 
-**3、Canal会导致消息重复吗？**
+## Canal会导致消息重复吗
 
 1）Canal instance初始化时，根据“消费者的Cursor”来确定binlog的起始位置，但是Cursor在ZK中的保存是滞后的（间歇性刷新），所以Canal instance获得的起始position一定不会大于消费者真实已见的position。
 
@@ -43,33 +77,31 @@ canal解析binary log对象(原始为byte流)
 
  
 
-**4、Canal性能如何？**
+## Canal性能如何
 
 答：Canal本身非常轻量级，主要性能开支就是在binlog解析，其转发、存储、提供消费者服务等都很简单。它本身不负责数据存储。原则上，canal解析效率几乎没有负载，canal的本身的延迟，取决于其与slave之间的网络IO。
 
  
 
-**5、Canal数据的集散问题，一个destination的消息能否被多个Consumer集群并行消费？**
+## Canal数据的集散问题，一个destination的消息能否被多个Consumer集群并行消费
 
-答：比如有两个Consumer集群，C1/C2，你希望C1和C2中的消费者都能够订阅到相同的消息，就像Kafka或者JMS Topic一样...但是非常遗憾，似乎Canal无法做到，这取决于Canal内部的存储模式，Canal内部是一个“即发即失”的内存队列，无法权衡、追溯不同Consumer之间的消息，所以无法支持。
+答：比如有两个Consumer集群，C1/C2，希望C1和C2中的消费者都能够订阅到相同的消息，就像Kafka或者JMS Topic一样...但是非常遗憾，似乎Canal无法做到，这取决于Canal内部的存储模式，Canal内部是一个“即发即失”的内存队列，无法权衡、追溯不同Consumer之间的消息，所以无法支持。
 
 如果希望达到这种结果，有2个办法：第一，消费者收到消息以后转发到kafka或者MQ中，后继的其他Consumer只与kafka或者MQ接入；第二：一个Canal中使用多个destination，但是它们对应相同的MySQL源。
 
 
 
-**6、我的Consumer从canal消费数据，但是我的业务有反查数据库的操作，那么数据一致性怎么做？**
+## Consumer从canal消费数据，但业务有反查数据库的操作，那么数据一致性怎么做
 
-答：从基本原理，我们得知canal就像一个“二级Slave”一样，所以canal接收到的数据总是相对滞后，如果消费者消费效率较低，那么从consumer的角度来说，它接收的数据更加滞后；如果consumer中反查数据库，无论它查找master还是其他任意level的从库，都会获得比当前视图更新（fresh）的数据，无论如何，我们总是无法做到完全意义上的“数据一致性”视图。
+答：canal就像一个“二级Slave”一样，所以canal接收到的数据总是相对滞后，如果消费者消费效率较低，那么从consumer的角度来说，它接收的数据更加滞后；如果consumer中反查数据库，无论它查找master还是其他任意level的从库，都会获得比当前视图更新（fresh）的数据，无论如何，无法做到完全意义上的“数据一致性”视图。
 
- 比如，canal消费者收到的数据为db.t1.row1.column1 = A，那么此时master上column1值已经更改为B，但是Slave可能因为与master同步延迟问题，此时Slave上column1值可能为C。所以无论你怎么操作，都无法得到一致性的数据。（数据发生的时间点，A < C < B）。
-
- 我们需要接受这种问题，为了避免更多干扰，consumer反查数据时使用canal所对应的slave可以在一定程度上缓解数据一致性的风险，但是这仍然无法解决问题。但是这种策略仍然有风险，会知道canal所对应的slave性能消耗加剧，进而增加数据同步的延迟。
+ 比如，canal消费者收到的数据为db.t1.row1.column1 = A，那么此时master上column1值已经更改为B，但是Slave可能因为与master同步延迟问题，此时Slave上column1值可能为C。无论怎么操作，都无法得到一致性的数据。（数据发生的时间点，A < C < B）。
 
 理想的解决办法：canal的消费者，消费数据以后，写入到一个数据库或者ES，那么在消费者内部的数据反查操作，全部基于这个数据库或者ES。
 
  
 
-**7、Consumer端无法进行消费的问题？**
+## Consumer端无法进行消费的问题
 
 答： 1）Consumer会与ZK集群保持联通性，用于检测消费者集群、CanalServer集群的变化，如果Consumer与ZK集群的联通性失效，将会导致消费者无法正常工作。
 
@@ -82,9 +114,9 @@ canal解析binary log对象(原始为byte流)
 
 ​    
 
-**8、如果Canal更换上游的master（或者slave），该怎么办？（比如迁库、迁表等）**
+## 如果Canal更换上游的master（或者slave），该怎么办（比如迁库、迁表等）
 
-答：背景要求，我们建议“新的数据库最好是旧的数据库的slave”或者“新、旧数据库为同源master”，平滑迁移；
+答：背景要求，建议“新的数据库最好是旧的数据库的slave”或者“新、旧数据库为同源master”，平滑迁移；
 
 1）创建一个新的instance，使用新的destination，并与新的Slave创建连接。
 
@@ -98,13 +130,13 @@ canal解析binary log对象(原始为byte流)
 
  
 
-**9、Canal如何重置消费的position？**
+## Canal如何重置消费的position
 
-答：比如当消费者在消费binlog时，数据异常，需要回溯到旧的position重新消费，是这个场景！
+答：比如当消费者在消费binlog时，数据异常，需要回溯到旧的position重新消费 等场景
 
-1）我们首先确保，你需要回溯的position所对应的binlog文件仍然存在，可以通过需要回溯的时间点来确定position和binlog文件名，这一点可以通过DBA来确认。
+1）首先确保，需要回溯的position所对应的binlog文件仍然存在，可以通过需要回溯的时间点来确定position和binlog文件名，这一点可以通过DBA来确认。
 
-2）关闭消费者，否则重置位点操作无法生效。（你可以在关闭消费者之前执行unsubscribe，来删除ZK中历史位点的信息）
+2）关闭消费者，否则重置位点操作无法生效。（可以在关闭消费者之前执行unsubscribe，来删除ZK中历史位点的信息）
 
 3）关闭Canal集群，修改对应的destination下的配置文件中的“canal.instance.master.journal.name = <此position对应的binlog名称>”、“canal.instance.master.position = <此position>”；可以只需要修改一台。
 

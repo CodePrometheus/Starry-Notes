@@ -24,7 +24,7 @@ ThreadLocal可以理解为TreadLocalMap的封装，ThreadLocal中存了ThreadLoc
 
 > 和HashMap的不同点：
 >
-> hash计算方式不同，另外ThreadLocalMap解决冲突的方法是**开放地址法**。
+> hash计算方式不同，另外ThreadLocalMap解决冲突的方法是**开放地址法**，内部只维护Entry数组，没有链表
 
 
 其中**key是ThreadLocal对象引用，value是当前线程存储值**
@@ -108,13 +108,27 @@ ThreadLocal为每个使用该变量的线程提供独立的变量副本，所以
 
 
 
-## ThreadLocal的key为什么用弱引用
+## ThreadLocal的key为什么用弱引用及为什么value不设置为弱引用
 
-如果 Key使用强引用：也就是上述说的情况，引用ThreadLocal的对象被回收了，ThreadLocal的引用ThreadLocalMap的Key为强引用并没有被回收，**如果不手动回收的话，ThreadLocal将不会回收那么将导致内存泄漏**。
+> key弱引用，value强引用
+
+如果 Key使用强引用：引用ThreadLocal的对象被回收了，ThreadLocal的引用ThreadLocalMap的Key为强引用并没有被回收，**如果不手动回收的话，ThreadLocal将不会回收那么将导致内存泄漏**。
 
 Key使用弱引用：引用的ThreadLocal的对象被回收了，ThreadLocal的引用ThreadLocalMap的Key为弱引用，如果内存回收，那么将ThreadLocalMap的Key将会被回收，ThreadLocal也将被回收**。value在ThreadLocalMap调用get、set、remove的时候就会被清除。**
 
-**如果vaule设计为弱引用，可能获取到的是null ，毫无意义。**
+
+
+> 为什么value不设置为弱引用
+
+如果vaule设计为弱引用，可能获取到的是null ，毫无意义
+
+value的删除不能只看map外面的强引用，还要看key
+
+也就是假如value是弱引用，那么在value在没有多余的强引用下，就会被删除，为什么“还要看key”，若此时key还有强引用指向，这时候get(key)得到就是null
+
+value被回收了ThreadLocal本身都没有意义
+
+
 
 
 
@@ -130,17 +144,22 @@ Key使用弱引用：引用的ThreadLocal的对象被回收了，ThreadLocal的�
 
 > 不再会被使用的对象或者变量占用的内存不能被回收，就是内存泄露。
 
-首先来说，如果把ThreadLocal置为null，那么意味着Heap中的ThreadLocal实例不在有强引用指向，只有弱引用存在，因此GC是可以回收这部分空间的，也就是key是可以回收的。但是**value却存在一条从Current Thread过来的强引用链**。因此只有当**Current Thread销毁时，value才能得到释放**
+首先来说，如果把ThreadLocal置为null，那么意味着Heap中的ThreadLocal实例不在有强引用指向，只有弱引用存在，因此GC是可以回收这部分空间的，也就是key是可以回收的。
 
-因此，只要这个线程对象被gc回收，就不会出现内存泄露，**但在threadLocal设为null和线程结束这段时间内不会被回收的**，比如key为null时，就没有办法访问这些key为null的Entry的value，如果当前线程再迟迟不结束的话，这些key为null的Entry的value就会一直存在一条强引用链：Thread Ref -> Thread -> ThreaLocalMap -> Entry -> value永远无法回收，造成内存泄漏。
+但是**value却存在一条从Current Thread过来的强引用链**。因此只有当**Current Thread销毁时，value才能得到释放**
+
+因此，只要这个线程对象被gc回收，就不会出现内存泄露，**但在threadLocal设为null和线程结束这段时间内不会被回收的**
+
+比如key为null时，就没有办法访问这些key为null的Entry的value，如果**当前线程再迟迟不结束**的话，ThreadLocalMap的生命周期就跟线程一样，这些key为null的Entry的value就会一直存在一条强引用链：Thread Ref -> Thread -> ThreaLocalMap -> Entry -> value永远无法回收，造成内存泄漏。
 
 ![img](images/68747470733a2f2f67697465652e636f6d2f73757065722d6a696d77616e672f696d672f7261772f6d61737465722f696d672f32303231303331343136303734312e706e67)
 
 
 
-> 如何避免内存泄漏
+## 如何避免内存泄漏
 
-每次使用完ThreadLocal，都调用它的remove()方法，清除数据。
+- 每次使用完ThreadLocal，都调用它的remove()方法，清除数据
+- 尽量不要使用全局的ThreadLocal，静态变量的生命周期和类的生命周期是一致的，而类的卸载时机比较苛刻，这会导致静态ThreadLocal无法被垃圾回收，容易出现内存泄漏
 
 
 
