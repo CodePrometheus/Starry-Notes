@@ -134,7 +134,7 @@ struct __attribute__ ((__packed__)) sdshdr64 {
 - len：记录当前已使用的字节数（不包括'\0'），获取SDS长度的复杂度为O(1)
 - alloc：记录当前字节数组总共分配的字节数量（不包括'\0'）
 - flags：标记当前字节数组的属性，是sdshdr8还是sdshdr16等
-- buf：字节数组，用于保存字符串，包括结尾空白字符'\0'
+- buf：字节数组，用于保存字符串（实际数据），包括结尾空白字符'\0'（额外占用1个字节）
 
 针对不同的string长度，使用不同类型保存`len`和`alloc`，是Redis节省内存的一种优化。
 
@@ -146,6 +146,7 @@ struct __attribute__ ((__packed__)) sdshdr64 {
    - 小于1MB的SDS每次分配与len属性同样大小的空间
    - 大于1MB的每次分配1MB
 4. **使用惰性释放策略**：不立即使用内存重分配来回收缩短后多出来的字节，而是使用free属性，记录字节数量
+5. 有效防止缓冲区溢出
 
 
 
@@ -270,11 +271,11 @@ typedef struct quicklistNode {
     unsigned char *zl;            //保存的数据 压缩前ziplist 压缩后压缩的数据
     unsigned int sz;             /* ziplist size in bytes */
     unsigned int count : 16;     /* count of items in ziplist */
-    unsigned int encoding : 2;   /* RAW==1 or LZF==2 */
-    unsigned int container : 2;  /* NONE==1 or ZIPLIST==2 */
-    unsigned int recompress : 1; /* was this node previous compressed? */
-    unsigned int attempted_compress : 1; /* node can't compress; too small */
-    unsigned int extra : 10; /* more bits to steal for future usage */
+    unsigned int encoding : 2;// 编码格式   /* RAW==1 or LZF==2 */
+    unsigned int container : 2; // 存储方式 /* NONE==1 or ZIPLIST==2 */
+    unsigned int recompress : 1; /* was this node previous compressed? */ // 数据是否被压缩
+    unsigned int attempted_compress : 1; /* node can't compress; too small */ // 数据能否被压缩
+    unsigned int extra : 10;// 预留的bitw /* more bits to steal for future usage */
 } quicklistNode;
 
 /* quicklistLZF is a 4+N byte struct holding 'sz' followed by 'compressed'.

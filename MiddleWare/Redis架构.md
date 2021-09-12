@@ -138,6 +138,8 @@
 
 **Raft算法**
 
+![Raft](images/Raft.png)
+
  Raft协议是用来解决分布式系统一致性问题的协议。 Raft协议描述的节点共有三种状态:Leader, Follower, Candidate。 Raft协议将时间切分为一个个的Term(任期)，可以认为是一种“逻辑时间”。 选举流程: 
 
 ①Raft采用心跳机制触发Leader选举系统启动后，全部节点初始化为Follower，term为0

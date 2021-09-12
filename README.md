@@ -88,8 +88,6 @@
   
 - [HashSet](KeyPoints/HashSet.md)
 
-- [BitMap](KeyPoints/BitMap.md)
-
 - [FailFast](KeyPoints/FailFast.md)
   
 
@@ -217,7 +215,7 @@
 
 - [InnoDB](MySQL/InnoDB.md)
 
-- [MySQL日志](MySQL/MySQL日志.md)
+- [日志](MySQL/日志.md)
 
 - [ACID](MySQL/ACID.md)
 
@@ -225,9 +223,9 @@
 
 - [锁](MySQL/锁.md)
 
-- [MySQL索引分类](MySQL/MySQL索引分类.md)
+- [索引分类](MySQL/索引分类.md)
 
-- [MySQL索引问与答](MySQL/MySQL索引问与答.md)
+- [索引问与答](MySQL/索引问与答.md)
 
 - [SQL优化](MySQL/SQL优化.md)
 
