@@ -1,4 +1,4 @@
-## 线程
+# 线程
 
 [TOC]
 
@@ -7,6 +7,16 @@
 ## 五大生命周期
 
 精准唤醒指定线程 **condition**
+
+new 
+
+runnable 
+
+blocked
+
+running
+
+dead
 
 ![](images/7e76cc17-0ad5-3ff3-954e-1f83463519d1.jpg)
 
@@ -24,7 +34,7 @@
 
 
 
-### sleep和wait的区别
+## sleep和wait的区别
 
 - 所属的类不同。sleep是Thread 类，wait是Object 类
 - sleep导致程序暂停执行指定的时间，但是监控状态依然保持
@@ -42,13 +52,15 @@
 
 
 
-### start和run区别
+## start和run区别
 
 - start启动线程。这时无需等待 run 方法体代码执行完毕，可以直接继续执行下面的代码。
 
   
 
 
+
+## Java线程和Linux线程关系
 
 
 
