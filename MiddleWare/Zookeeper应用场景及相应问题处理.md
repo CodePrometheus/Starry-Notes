@@ -330,3 +330,132 @@ zookeeper除了可以采用上面默认的Quorums方式来避免出现"脑裂"�
 分布式锁脑裂，重复加锁
 
 分布式系统，主控节点有一个Master，此时因为网络故障等原因，导致其他人**以为这个Master不可用了**，其他节点出现了别的Master，**导致集群里有2个Master同时在运行**
+
+
+
+
+
+## 分布式唯一ID
+
+> 为什么需要分布式ID
+
+如果在分布式场景下，如果还使用 MySQL 主键自增，就会出现 **主键冲突** 的情况
+
+
+
+几种实现方式：
+
+- UUID （Universally Unique Identifier 通用唯一标识符，由 32 个字符组成，采用 16 进制进行编码，定义了在时间和空间都完全唯一的系统信息），可以直接在本地生成，速度快，不依赖与外部，但是 UUID 没有可以识别的特点，也没有顺序性
+- Redis：用 incr 指令，具有原子性
+- 雪花算法：生成 64 位 Long 型的 ID，它是由 1 位符号位，41 位的时间戳毫秒数，10 位的机器 ID，12 位的序列号这 4 种元素来组成
+
+
+
+而 Zookeeper 实现的原理就是 顺序节点 的特性，根据创建的时间，利用 Zookeeper 同级节点必须唯一的特性，底层 synchronized 保证
+
+~~~java
+public synchronized boolean addChild(String child) {
+    if (children == null) {
+        // let's be conservative on the typical number of children
+        children = new HashSet<String>(8);
+    }
+    return children.add(child);
+}
+
+public void createNode(final String path, byte[] data, List<ACL> acl, long ephemeralOwner, int parentCVersion, long zxid, long time, Stat outputStat) throws KeeperException.NoNodeException, KeeperException.NodeExistsException {
+    int lastSlash = path.lastIndexOf('/');
+    String parentName = path.substring(0, lastSlash);
+    String childName = path.substring(lastSlash + 1);
+    StatPersisted stat = createStat(zxid, time, ephemeralOwner);
+    DataNode parent = nodes.get(parentName);
+    if (parent == null) {
+        throw new KeeperException.NoNodeException();
+    }
+    synchronized (parent) {
+        // Add the ACL to ACL cache first, to avoid the ACL not being
+        // created race condition during fuzzy snapshot sync.
+        //
+        // This is the simplest fix, which may add ACL reference count
+        // again if it's already counted in in the ACL map of fuzzy
+        // snapshot, which might also happen for deleteNode txn, but
+        // at least it won't cause the ACL not exist issue.
+        //
+        // Later we can audit and delete all non-referenced ACLs from
+        // ACL map when loading the snapshot/txns from disk, like what
+        // we did for the global sessions.
+        Long longval = aclCache.convertAcls(acl);
+
+        Set<String> children = parent.getChildren();
+        if (children.contains(childName)) {
+            throw new KeeperException.NodeExistsException();
+        }
+
+        nodes.preChange(parentName, parent);
+        if (parentCVersion == -1) {
+            parentCVersion = parent.stat.getCversion();
+            parentCVersion++;
+        }
+        // There is possibility that we'll replay txns for a node which
+        // was created and then deleted in the fuzzy range, and it's not
+        // exist in the snapshot, so replay the creation might revert the
+        // cversion and pzxid, need to check and only update when it's
+        // larger.
+        if (parentCVersion > parent.stat.getCversion()) {
+            parent.stat.setCversion(parentCVersion);
+            parent.stat.setPzxid(zxid);
+        }
+        DataNode child = new DataNode(data, longval, stat);
+        parent.addChild(childName);
+        nodes.postChange(parentName, parent);
+        nodeDataSize.addAndGet(getNodeSize(path, child.data));
+        nodes.put(path, child);
+        EphemeralType ephemeralType = EphemeralType.get(ephemeralOwner);
+        if (ephemeralType == EphemeralType.CONTAINER) {
+            containers.add(path);
+        } else if (ephemeralType == EphemeralType.TTL) {
+            ttls.add(path);
+        } else if (ephemeralOwner != 0) {
+            HashSet<String> list = ephemerals.get(ephemeralOwner);
+            if (list == null) {
+                list = new HashSet<String>();
+                ephemerals.put(ephemeralOwner, list);
+            }
+            synchronized (list) {
+                list.add(path);
+            }
+        }
+        if (outputStat != null) {
+            child.copyStat(outputStat);
+        }
+    }
+    // now check if its one of the zookeeper node child
+    if (parentName.startsWith(quotaZookeeper)) {
+        // now check if its the limit node
+        if (Quotas.limitNode.equals(childName)) {
+            // this is the limit node
+            // get the parent and add it to the trie
+            pTrie.addPath(Quotas.trimQuotaPath(parentName));
+        }
+        if (Quotas.statNode.equals(childName)) {
+            updateQuotaForPath(Quotas.trimQuotaPath(parentName));
+        }
+    }
+
+    String lastPrefix = getMaxPrefixWithQuota(path);
+    long bytes = data == null ? 0 : data.length;
+    // also check to update the quotas for this node
+    if (lastPrefix != null) {    // ok we have some match and need to update
+        updateQuotaStat(lastPrefix, bytes, 1);
+    }
+    updateWriteStat(path, bytes);
+    dataWatches.triggerWatch(path, Event.EventType.NodeCreated);
+    childWatches.triggerWatch(parentName.equals("") ? "/" : parentName, Event.EventType.NodeChildrenChanged);
+}
+~~~
+
+
+
+
+
+
+
