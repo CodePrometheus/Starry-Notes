@@ -10,7 +10,9 @@ ThreadLocal的实现原理是，在每个线程中维护一个Map，键是Thread
 
 
 
-> **与Synchonized的对照:** ThreadLocal和Synchonized都用于解决多线程并发防问。可是ThreadLocal与synchronized有本质的差别。synchronized是利用**锁的机制**，使变量或代码块在某一时该仅仅能被一个线程訪问。**而ThreadLocal为每个线程都提供了变量的副本，使得每个线程在某一时间訪问到的并非同一个对象**，这样就隔离了多个线程对数据的数据共享。而Synchronized却正好相反，它用于在多个线程间通信时可以获得数据共享。
+> **与Synchonized的对照:** ThreadLocal和Synchonized都用于解决多线程并发防问。可是ThreadLocal与synchronized有本质的差别。synchronized是利用**锁的机制**，使变量或代码块在某一时该仅仅能被一个线程防问。
+>
+> **而ThreadLocal为每个线程都提供了变量的副本，使得每个线程在某一时间訪问到的并非同一个对象**，这样就隔离了多个线程对数据的数据共享。而Synchronized却正好相反，它用于在多个线程间通信时可以获得数据共享。
 
 
 
