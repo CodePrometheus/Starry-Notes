@@ -133,6 +133,8 @@
 
 - [Tomcat](MiddleWare/Tomcat.md)
 
+- [Solr](MiddleWare/Solr.md)
+
 
 ## RPC
 
